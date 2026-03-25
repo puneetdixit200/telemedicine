@@ -1,0 +1,26 @@
+<%- include('partials/layout', { title: 'Doctors', user, body: `
+<div class='card'>
+  <h2>Doctors</h2>
+  <form method='get' action='/doctors' class='row'>
+    <div><label>Specialization</label><input name='specialization' value='${(typeof specialization !== 'undefined' ? specialization : '')}' /></div>
+    <div><label>Language</label><input name='language' value='${(typeof language !== 'undefined' ? language : '')}' /></div>
+    <div style='align-self:end;'><button type='submit'>Filter</button></div>
+  </form>
+</div>
+
+${doctors.map(d => `
+  <div class='card'>
+    <div class='row'>
+      <div>
+        <h3 style='margin:0;'>${d.fullName}</h3>
+        <div class='badge'>${(d.doctorProfile && d.doctorProfile.specialization) || 'Doctor'}</div>
+        <div class='badge'>${d.online ? 'online' : 'offline'}</div>
+        <p>${(d.doctorProfile && d.doctorProfile.description) || ''}</p>
+      </div>
+      <div style='align-self:center;'>
+        <a href='/doctors/${d.id}'>View profile & slots</a>
+      </div>
+    </div>
+  </div>
+`).join('')}
+` }) %>

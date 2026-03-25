@@ -1,0 +1,57 @@
+<%- include('partials/layout', { title: 'Call', user, body: `
+<div class='card'>
+  <h2>Consultation</h2>
+  <p><b>Appointment:</b> ${appointment.id}</p>
+  <p><b>Mode:</b> <span class='badge'>${appointment.mode}</span></p>
+  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.patient.fullName}</p>
+
+  <div class='row'>
+    <div>
+      <button id='btnVideo'>Video call</button>
+    </div>
+    <div>
+      <button id='btnAudio'>Audio call</button>
+    </div>
+    <div>
+      <button id='btnText'>Text chat</button>
+    </div>
+    <div>
+      <form method='post' action='/calls/${appointment.id}/end' style='margin:0;'>
+        <button class='secondary' type='submit'>End session</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class='card'>
+  <div class='row'>
+    <div>
+      <h3>Local</h3>
+      <video id='localVideo' autoplay muted playsinline style='width:100%; background:#000; border-radius:8px;'></video>
+    </div>
+    <div>
+      <h3>Remote</h3>
+      <video id='remoteVideo' autoplay playsinline style='width:100%; background:#000; border-radius:8px;'></video>
+    </div>
+  </div>
+
+  <div class='row' style='margin-top:10px;'>
+    <div><button id='btnMute' class='secondary'>Mute</button></div>
+    <div><button id='btnCamera' class='secondary'>Toggle camera</button></div>
+    <div><span id='status' class='badge'>idle</span></div>
+  </div>
+</div>
+
+<div class='card'>
+  <h3>Text chat</h3>
+  <div id='chatLog' style='height:200px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff;'></div>
+  <form id='chatForm' class='row' style='margin-top:10px;'>
+    <div style='flex: 1 1 600px;'><input id='chatInput' placeholder='Type message...' /></div>
+    <div style='flex: 0 0 160px;'><button type='submit'>Send</button></div>
+  </form>
+</div>
+
+<div id='callRuntimeConfig' data-call-config='${callConfigEncoded}'></div>
+<script src='/socket.io/socket.io.js'></script>
+<script src='/public/js/call.js'></script>
+` }) %>

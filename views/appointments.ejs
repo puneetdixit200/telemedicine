@@ -1,0 +1,24 @@
+<%- include('partials/layout', { title: 'Appointments', user, body: `
+<div class='card'>
+  <h2>My Appointments</h2>
+  ${appointments.length === 0 ? '<p>No appointments yet.</p>' : ''}
+
+  ${appointments.map(a => `
+    <div class='card' style='background:#fafafa;'>
+      <div class='row' style='align-items:center;'>
+        <div>
+          <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
+          <div class='badge'>${a.status}</div>
+          <div class='badge'>${a.mode}</div>
+          <div>
+            ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
+          </div>
+        </div>
+        <div style='align-self:center;'>
+          <a href='/appointments/${a.id}'>Open</a>
+        </div>
+      </div>
+    </div>
+  `).join('')}
+</div>
+` }) %>

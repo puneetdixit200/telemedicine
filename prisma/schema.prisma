@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  patient
+  doctor
+  admin
+}
+
+enum SlotStatus {
+  available
+  busy
+  booked
+}
+
+enum AppointmentStatus {
+  booked
+  completed
+  cancelled
+  no_show
+}
+
+enum ConsultationMode {
+  video
+  audio
+  text
+}
+
+enum CallSessionStatus {
+  ready
+  in_progress
+  ended
+  failed
+}
+
+model User {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  email          String   @unique
+  phone          String?
+  fullName       String
+  passwordHash   String
+  role           Role
+  isActive       Boolean  @default(true)
+  lastSeenAt     DateTime?
+
+  gender         String?
+  dateOfBirth    DateTime?
+  address        String?
+  language       String?
+  timeZone       String?
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+
+  asPatientAppointments Appointment[] @relation("appointments_as_patient")
+  asDoctorAppointments  Appointment[] @relation("appointments_as_doctor")
+
+  slots          Slot[] @relation("doctor_slots")
+
+  documents      Document[]
+}
+
+model PatientProfile {
+  userId            String  @id
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  chronicConditions String?
+  basicHealthInfo   String?
+}
+
+model DoctorProfile {
+  userId               String  @id
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  specialization       String
+  yearsOfExperience    Int?
+  qualifications       String?
+  clinicName           String?
+  consultationLanguages String?
+  description          String?
+  callEnabled          Boolean @default(false)
+}
+
+model Slot {
+  id        String     @id @default(uuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  doctorId  String
+  doctor    User       @relation("doctor_slots", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  startAt   DateTime
+  status    SlotStatus @default(available)
+
+  appointment Appointment?
+
+  @@unique([doctorId, startAt])
+  @@index([doctorId, startAt])
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  patientId   String
+  doctorId    String
+  patient     User              @relation("appointments_as_patient", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User              @relation("appointments_as_doctor", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  startAt     DateTime
+  status      AppointmentStatus @default(booked)
+  mode        ConsultationMode  @default(video)
+
+  problemDescription String?
+  medicationsText    String?
+
+  slotId      String?  @unique
+  slot        Slot?    @relation(fields: [slotId], references: [id], onDelete: SetNull)
+
+  callSession CallSession?
+  prescription Prescription?
+  documents   Document[]
+
+  @@index([doctorId, startAt])
+  @@index([patientId, startAt])
+}
+
+model CallSession {
+  id            String            @id @default(uuid())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  appointmentId String            @unique
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  status        CallSessionStatus @default(ready)
+  startedAt     DateTime?
+  endedAt       DateTime?
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  fileName      String
+  contentType   String
+  sizeBytes     Int
+
+  blobName      String
+}
+
+model Prescription {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointmentId String   @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  diagnosis     String
+  items         Json
+  instructions  String?
+  followUpAt    DateTime?
+  notes         String?
+}

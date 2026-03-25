@@ -1,0 +1,11 @@
+<%- include('partials/layout', { title: 'Dashboard', user, body: `
+<div class='card'>
+  <h2>Dashboard</h2>
+  ${message ? `<p class='success'>${message}</p>` : ''}
+  ${!user ? `<p>Please <a href='/auth/login'>login</a>.</p>` : `
+    <p>Welcome, <b>${user.fullName}</b> (${user.role}).</p>
+    <p><a href='/users/me'>View / edit your profile</a></p>
+    ${user.role === 'doctor' ? `<p><a href='/doctors/me/slots'>Manage your slots</a></p>` : ''}
+  `}
+</div>
+` }) %>

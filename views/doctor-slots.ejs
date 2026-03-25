@@ -1,0 +1,47 @@
+<%- include('partials/layout', { title: 'My Slots', user, body: `
+<div class='card'>
+  <h2>Manage Slots</h2>
+  ${error ? `<p class='error'>${error}</p>` : ''}
+  ${message ? `<p class='success'>${message}</p>` : ''}
+
+  <div class='row' style='align-items:center; margin-bottom: 12px;'>
+    <div><b>Call State:</b> <span class='badge'>${callState || 'offline'}</span></div>
+    <div>
+      <form method='post' action='/doctors/me/call-state' style='margin:0;'>
+        <input type='hidden' name='state' value='online' />
+        <button type='submit'>Go Online</button>
+      </form>
+    </div>
+    <div>
+      <form method='post' action='/doctors/me/call-state' style='margin:0;'>
+        <input type='hidden' name='state' value='offline' />
+        <button class='secondary' type='submit'>Go Offline</button>
+      </form>
+    </div>
+  </div>
+
+  <form method='post' action='/doctors/me/slots/bulk' class='row'>
+    <div><label>Date (UTC)</label><input name='date' type='date' required /></div>
+    <div><label>Start hour UTC (default 9)</label><input name='startHourUtc' type='number' min='0' max='23' /></div>
+    <div><label>End hour UTC (default 17)</label><input name='endHourUtc' type='number' min='1' max='24' /></div>
+    <div><label>Action</label>
+      <select name='action'>
+        <option value='make_available'>Make available</option>
+        <option value='make_busy'>Make busy</option>
+      </select>
+    </div>
+    <div style='align-self:end;'><button type='submit'>Apply</button></div>
+  </form>
+</div>
+
+<div class='card'>
+  <h3>Upcoming</h3>
+  ${slots.length === 0 ? '<p>No slots found.</p>' : ''}
+  ${slots.map(s => `
+    <div class='row' style='align-items:center;'>
+      <div>${new Date(s.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
+      <div><span class='badge'>${s.status}</span></div>
+    </div>
+  `).join('')}
+</div>
+` }) %>

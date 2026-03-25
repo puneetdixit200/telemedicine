@@ -1,0 +1,86 @@
+<%- include('partials/layout', { title: 'Appointment', user, body: `
+<div class='card'>
+  <h2>Appointment</h2>
+  ${error ? `<p class='error'>${error}</p>` : ''}
+  ${message ? `<p class='success'>${message}</p>` : ''}
+
+  <p><b>Time:</b> ${new Date(appointment.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</p>
+  <p><b>Status:</b> <span class='badge'>${appointment.status}</span> <span class='badge'>${appointment.mode}</span></p>
+  <p><b>Doctor:</b> ${appointment.doctor.fullName}</p>
+  <p><b>Patient:</b> ${appointment.patient.fullName}</p>
+  <p>
+    <b>Doctor online:</b> <span id='doctorOnlineBadge' class='badge'>${presence && presence.doctorOnline ? 'online' : 'offline'}</span>
+    <b>Patient online:</b> <span id='patientOnlineBadge' class='badge'>${presence && presence.patientOnline ? 'online' : 'offline'}</span>
+  </p>
+
+  <div class='row' style='align-items:center;'>
+    <div>
+      ${presence && presence.canStartCall
+        ? `<a id='joinCallLink' href='/calls/${appointment.id}'>Join Call (Video/Audio/Text)</a>`
+        : `<span id='joinCallLink' class='badge'>Call locked: both users must be online</span>`}
+    </div>
+    <div>
+      <a href='/prescriptions/${appointment.id}'>Prescription</a>
+    </div>
+    <div>
+      <form method='post' action='/appointments/${appointment.id}/cancel' style='margin:0;'>
+        <button class='secondary' type='submit'>Cancel appointment</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class='card'>
+  <h3>Pre-consultation</h3>
+  ${user.role === 'patient' ? `
+    <form method='post' action='/appointments/${appointment.id}/prep'>
+      <div style='margin-top:10px;'>
+        <label>Problem description</label>
+        <textarea name='problemDescription' rows='3'>${appointment.problemDescription || ''}</textarea>
+      </div>
+      <div style='margin-top:10px;'>
+        <label>Current / past medications</label>
+        <textarea name='medicationsText' rows='3'>${appointment.medicationsText || ''}</textarea>
+      </div>
+      <div style='margin-top:12px;'>
+        <button type='submit'>Save</button>
+      </div>
+    </form>
+  ` : `
+    <p><b>Problem:</b></p>
+    <pre>${appointment.problemDescription || ''}</pre>
+    <p><b>Medications:</b></p>
+    <pre>${appointment.medicationsText || ''}</pre>
+  `}
+</div>
+
+<div class='card'>
+  <h3>Documents</h3>
+  ${user.role === 'patient' ? `
+    <form id='uploadForm'>
+      <input type='hidden' name='appointmentId' value='${appointment.id}' />
+      <input name='file' type='file' required />
+      <button type='submit'>Upload to Azure Blob</button>
+      <div id='uploadStatus'></div>
+    </form>
+  ` : ''}
+
+  <div id='documentsList'>
+    ${appointment.documents && appointment.documents.length ? appointment.documents.map(d => `
+      <div class='row' style='align-items:center;'>
+        <div>${d.fileName}</div>
+        <div><span class='badge'>${Math.round(d.sizeBytes/1024)} KB</span></div>
+        <div><a href='/documents/${d.id}/download'>Download</a></div>
+      </div>
+    `).join('') : '<p>No documents yet.</p>'}
+  </div>
+</div>
+
+<div
+  id='appointmentRuntime'
+  data-appointment-id='${appointment.id}'
+  data-is-doctor='${user.role === 'doctor' ? 'true' : 'false'}'
+  data-call-href='/calls/${appointment.id}'
+></div>
+<script src='/public/js/appointment.js'></script>
+` }) %>

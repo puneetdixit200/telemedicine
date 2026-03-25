@@ -1,0 +1,52 @@
+<%- include('partials/layout', { title: 'Prescription', user, body: `
+<div class='card'>
+  <h2>Prescription</h2>
+  ${error ? `<p class='error'>${error}</p>` : ''}
+  ${message ? `<p class='success'>${message}</p>` : ''}
+
+  <p><b>Appointment:</b> ${appointment.id}</p>
+  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.patient.fullName}</p>
+
+  ${appointment.prescription ? `
+    <div class='card' style='background:#fafafa;'>
+      <p><b>Diagnosis:</b> ${appointment.prescription.diagnosis}</p>
+      <p><b>Medications:</b></p>
+      <pre>${JSON.stringify(appointment.prescription.items, null, 2)}</pre>
+      <p><b>Instructions:</b></p>
+      <pre>${appointment.prescription.instructions || ''}</pre>
+      <p><a href='/prescriptions/${appointment.id}/pdf'>Download PDF</a></p>
+    </div>
+  ` : '<p>No prescription yet.</p>'}
+
+  ${user.role === 'doctor' && user.id === appointment.doctorId ? `
+    <div class='card'>
+      <h3>${appointment.prescription ? 'Edit' : 'Create'} prescription</h3>
+      <form method='post' action='/prescriptions/${appointment.id}'>
+        <div>
+          <label>Diagnosis</label>
+          <input name='diagnosis' value='${appointment.prescription ? appointment.prescription.diagnosis : ''}' required />
+        </div>
+        <div style='margin-top:10px;'>
+          <label>Medications (one per line: name, dosage, frequency, duration)</label>
+          <textarea name='itemsText' rows='4' required>${appointment.prescription ? (Array.isArray(appointment.prescription.items) ? appointment.prescription.items.map(i => `${i.name||''}, ${i.dosage||''}, ${i.frequency||''}, ${i.duration||''}`).join('\n') : '') : ''}</textarea>
+        </div>
+        <div style='margin-top:10px;'>
+          <label>Instructions</label>
+          <textarea name='instructions' rows='2'>${appointment.prescription ? (appointment.prescription.instructions || '') : ''}</textarea>
+        </div>
+        <div style='margin-top:10px;'>
+          <label>Follow-up date</label>
+          <input name='followUpAt' type='date' value='${appointment.prescription && appointment.prescription.followUpAt ? new Date(appointment.prescription.followUpAt).toISOString().slice(0,10) : ''}' />
+        </div>
+        <div style='margin-top:10px;'>
+          <label>Notes</label>
+          <textarea name='notes' rows='2'>${appointment.prescription ? (appointment.prescription.notes || '') : ''}</textarea>
+        </div>
+        <div style='margin-top:12px;'>
+          <button type='submit'>Save prescription</button>
+        </div>
+      </form>
+    </div>
+  ` : ''}
+</div>
+` }) %>

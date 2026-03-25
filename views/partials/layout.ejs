@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title || 'Telemedicine' %></title>
+  <link rel="stylesheet" href="/public/css/styles.css" />
+</head>
+<body data-authenticated="<%= user ? 'true' : 'false' %>">
+  <div class="container">
+    <div class="nav">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/doctors">Doctors</a>
+      <a href="/appointments">Appointments</a>
+      <div class="spacer"></div>
+      <% if (user) { %>
+        <span class="badge"><%= user.role %></span>
+        <span><%= user.fullName %></span>
+        <form method="post" action="/auth/logout" style="margin:0;">
+          <button class="secondary" type="submit">Logout</button>
+        </form>
+      <% } else { %>
+        <a href="/auth/login">Login</a>
+        <a href="/auth/register">Register</a>
+      <% } %>
+    </div>
+
+    <%- body %>
+  </div>
+
+  <script src="/public/js/presence-ping.js"></script>
+</body>
+</html>

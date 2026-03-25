@@ -1,0 +1,21 @@
+<%- include('partials/layout', { title: 'My Health', user, body: `
+<div class='card'>
+  <h2>My Health</h2>
+  ${error ? `<p class='error'>${error}</p>` : ''}
+  ${message ? `<p class='success'>${message}</p>` : ''}
+
+  <form method='post' action='/patients/me'>
+    <div style='margin-top:10px;'>
+      <label>Chronic conditions</label>
+      <textarea name='chronicConditions' rows='2'>${(user.patientProfile && user.patientProfile.chronicConditions) || ''}</textarea>
+    </div>
+    <div style='margin-top:10px;'>
+      <label>Basic health info</label>
+      <textarea name='basicHealthInfo' rows='2'>${(user.patientProfile && user.patientProfile.basicHealthInfo) || ''}</textarea>
+    </div>
+    <div style='margin-top:12px;'>
+      <button type='submit'>Save</button>
+    </div>
+  </form>
+</div>
+` }) %>
