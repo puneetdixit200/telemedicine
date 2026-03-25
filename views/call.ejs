@@ -1,6 +1,6 @@
 <%- include('partials/layout', { title: 'Call', user, body: `
 <div class='card'>
-  <h2>Consultation</h2>
+  <h2 class='text-3xl font-semibold m-0 mb-2'>Consultation</h2>
   <p><b>Appointment:</b> ${appointment.id}</p>
   <p><b>Mode:</b> <span class='badge'>${appointment.mode}</span></p>
   <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}</p>
@@ -31,7 +31,7 @@
 </div>
 
 <div class='card'>
-  <h3>Patient Medical Context</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Patient Medical Context</h3>
   <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
   <p><b>Chronic conditions:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
   <p><b>Basic health info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
@@ -39,7 +39,7 @@
   <h4>Previous prescriptions</h4>
   ${history.historyAppointments.length === 0 ? '<p>No previous completed consultations found.</p>' : ''}
   ${history.historyAppointments.map(a => `
-    <div class='card' style='background:#fafafa;'>
+    <div class='card !bg-white/70'>
       <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
       <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
     </div>
@@ -50,11 +50,11 @@
   <div class='row'>
     <div>
       <h3>Local</h3>
-      <video id='localVideo' autoplay muted playsinline style='width:100%; background:#000; border-radius:8px;'></video>
+      <video id='localVideo' autoplay muted playsinline style='width:100%; background:#000; border-radius:12px; border:1px solid #0f172a22;'></video>
     </div>
     <div>
       <h3>Remote</h3>
-      <video id='remoteVideo' autoplay playsinline style='width:100%; background:#000; border-radius:8px;'></video>
+      <video id='remoteVideo' autoplay playsinline style='width:100%; background:#000; border-radius:12px; border:1px solid #0f172a22;'></video>
     </div>
   </div>
 
@@ -66,7 +66,7 @@
 </div>
 
 <div class='card'>
-  <h3>Text chat</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Text chat</h3>
   <div id='chatLog' style='height:200px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff;'></div>
   <form id='chatForm' class='row' style='margin-top:10px;'>
     <div style='flex: 1 1 600px;'><input id='chatInput' placeholder='Type message...' /></div>

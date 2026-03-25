@@ -1,10 +1,11 @@
 <%- include('partials/layout', { title: 'My Profile', user, body: `
 <div class='card'>
-  <h2>My Profile</h2>
+  <p class='text-xs uppercase tracking-wider text-sky-700 font-semibold mb-1'>Account Center</p>
+  <h2 class='text-3xl font-semibold m-0'>My Profile</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
 
-  <form method='post' action='/users/me'>
+  <form method='post' action='/users/me' class='mt-4'>
     <div class='row'>
       <div><label>Full name</label><input name='fullName' value='${user.fullName || ''}' required /></div>
       <div><label>Phone</label><input name='phone' value='${user.phone || ''}' /></div>
@@ -15,19 +16,19 @@
     </div>
 
     ${user.role === 'patient' ? `
-      <div style='margin-top:10px;'>
+      <div class='mt-3'>
         <label>Chronic conditions</label>
         <textarea name='chronicConditions' rows='2'>${(user.patientProfile && user.patientProfile.chronicConditions) || ''}</textarea>
       </div>
-      <div style='margin-top:10px;'>
+      <div class='mt-3'>
         <label>Basic health info</label>
         <textarea name='basicHealthInfo' rows='2'>${(user.patientProfile && user.patientProfile.basicHealthInfo) || ''}</textarea>
       </div>
     ` : ''}
 
     ${user.role === 'doctor' ? `
-      <div class='card' style='background:#fafafa'>
-        <h3>Doctor profile</h3>
+      <div class='card !bg-slate-50'>
+        <h3 class='text-lg font-semibold m-0 mb-2'>Doctor profile</h3>
         <div class='row'>
           <div><label>Specialization</label><input name='specialization' value='${(user.doctorProfile && user.doctorProfile.specialization) || ''}' /></div>
           <div><label>Years of experience</label><input name='yearsOfExperience' type='number' min='0' value='${(user.doctorProfile && (user.doctorProfile.yearsOfExperience ?? '')) || ''}' /></div>
@@ -35,14 +36,14 @@
           <div><label>Clinic</label><input name='clinicName' value='${(user.doctorProfile && user.doctorProfile.clinicName) || ''}' /></div>
           <div><label>Consultation languages</label><input name='consultationLanguages' value='${(user.doctorProfile && user.doctorProfile.consultationLanguages) || ''}' /></div>
         </div>
-        <div style='margin-top:10px;'>
+        <div class='mt-3'>
           <label>Description</label>
           <textarea name='description' rows='2'>${(user.doctorProfile && user.doctorProfile.description) || ''}</textarea>
         </div>
       </div>
     ` : ''}
 
-    <div style='margin-top:12px;'>
+    <div class='mt-4'>
       <button type='submit'>Save</button>
     </div>
   </form>

@@ -1,6 +1,6 @@
 <%- include('partials/layout', { title: 'My Slots', user, body: `
 <div class='card'>
-  <h2>Manage Slots</h2>
+  <h2 class='text-3xl font-semibold m-0 mb-2'>Manage Slots</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
 
@@ -35,10 +35,10 @@
 </div>
 
 <div class='card'>
-  <h3>Upcoming</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Upcoming</h3>
   ${slots.length === 0 ? '<p>No slots found.</p>' : ''}
   ${slots.map(s => `
-    <div class='row' style='align-items:center;'>
+    <div class='row card !m-0 mb-2 !bg-white/70' style='align-items:center;'>
       <div>${new Date(s.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
       <div><span class='badge'>${s.status}</span></div>
     </div>

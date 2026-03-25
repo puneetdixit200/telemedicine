@@ -1,21 +1,21 @@
 <%- include('partials/layout', { title: 'Patient Workspace', user, body: `
 <div class='card'>
-  <h2>Patient Workspace</h2>
+  <h2 class='text-3xl font-semibold m-0'>Patient Workspace</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
-  <p>This page keeps personal and family records separated under the same login.</p>
+  <p class='text-slate-600'>This page keeps personal and family records separated under the same login.</p>
 </div>
 
 <div class='card'>
-  <h3>Main Patient Medical Data</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Main Patient Medical Data</h3>
   <p><b>Chronic conditions:</b> ${(user.patientProfile && user.patientProfile.chronicConditions) || 'N/A'}</p>
   <p><b>Basic health info:</b> ${(user.patientProfile && user.patientProfile.basicHealthInfo) || 'N/A'}</p>
   <p><a href='/patients/me'>Edit main profile health data</a></p>
 </div>
 
 <div class='card'>
-  <h3>Upload Medical Document</h3>
-  <p>Upload records for main user or family member.</p>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Upload Medical Document</h3>
+  <p class='text-slate-600'>Upload records for main user or family member.</p>
   <form id='workspaceUploadForm'>
     <label>File is for</label>
     <select name='uploadFor' required>
@@ -31,7 +31,7 @@
 </div>
 
 <div class='card'>
-  <h3>Add Family Member</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Add Family Member</h3>
   <form method='post' action='/patients/family-members' class='row'>
     <div><label>Full name</label><input name='fullName' required /></div>
     <div><label>Relation</label><input name='relationToPatient' placeholder='Son / Mother / Spouse' /></div>
@@ -44,10 +44,10 @@
 </div>
 
 <div class='card'>
-  <h3>Family Members</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Family Members</h3>
   ${user.familyMembers && user.familyMembers.length ? '' : '<p>No family members added yet.</p>'}
   ${(user.familyMembers || []).map(m => `
-    <div class='card' style='background:#fafafa;'>
+    <div class='card !bg-white/70'>
       <form method='post' action='/patients/family-members/update' class='row'>
         <input type='hidden' name='familyMemberId' value='${m.id}' />
         <div><label>Full name</label><input name='fullName' value='${m.fullName || ''}' required /></div>
@@ -63,10 +63,10 @@
 </div>
 
 <div class='card'>
-  <h3>Prescriptions & Completed Consultations</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Prescriptions & Completed Consultations</h3>
   ${completedAppointments.length === 0 ? '<p>No completed consultations yet.</p>' : ''}
   ${completedAppointments.map(a => `
-    <div class='card' style='background:#fafafa;'>
+    <div class='card !bg-white/70'>
       <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
       <div><b>Doctor:</b> ${a.doctor.fullName}</div>
       <div><b>For:</b> ${a.familyMember ? a.familyMember.fullName : user.fullName}</div>

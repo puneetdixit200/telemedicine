@@ -1,27 +1,27 @@
 <%- include('partials/layout', { title: 'Doctor Analytics', user, body: `
 <div class='card'>
-  <h2>Doctor Dashboard</h2>
-  <p>Last 7 days activity.</p>
+  <h2 class='text-3xl font-semibold m-0'>Doctor Dashboard</h2>
+  <p class='text-slate-600'>Last 7 days activity.</p>
 </div>
 
 <div class='card'>
-  <h3>Status Summary</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Status Summary</h3>
   <div class='row'>
-    <div><span class='badge'>Booked</span> <b>${statusCounts.booked}</b></div>
-    <div><span class='badge'>Completed</span> <b>${statusCounts.completed}</b></div>
-    <div><span class='badge'>Cancelled</span> <b>${statusCounts.cancelled}</b></div>
-    <div><span class='badge'>No-show</span> <b>${statusCounts.no_show}</b></div>
+    <div class='card !m-0 !p-3'><span class='badge'>Booked</span> <b>${statusCounts.booked}</b></div>
+    <div class='card !m-0 !p-3'><span class='badge'>Completed</span> <b>${statusCounts.completed}</b></div>
+    <div class='card !m-0 !p-3'><span class='badge'>Cancelled</span> <b>${statusCounts.cancelled}</b></div>
+    <div class='card !m-0 !p-3'><span class='badge'>No-show</span> <b>${statusCounts.no_show}</b></div>
   </div>
 </div>
 
 <div class='card'>
-  <h3>Daily Appointments Graph</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Daily Appointments Graph</h3>
   ${dailySeries.map(d => `
     <div style='margin-bottom:10px;'>
       <div class='row' style='align-items:center;'>
         <div style='flex: 0 0 140px;'>${d.day}</div>
-        <div style='flex: 1 1 auto; background:#eef2ff; border-radius:999px; height:14px; overflow:hidden;'>
-          <div style='height:100%; width:${d.widthPct}%; background:#2563eb;'></div>
+        <div style='flex: 1 1 auto; background:#e0f2fe; border-radius:999px; height:14px; overflow:hidden;'>
+          <div style='height:100%; width:${d.widthPct}%; background:linear-gradient(90deg, #0284c7, #06b6d4);'></div>
         </div>
         <div style='flex: 0 0 40px; text-align:right;'>${d.count}</div>
       </div>

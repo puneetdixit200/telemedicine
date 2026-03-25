@@ -50,6 +50,14 @@ Seeded users:
 - Use the language selector in the top navigation.
 - Selecting a language applies full-page translation after reload.
 
+## Tailwind CSS
+
+- Tailwind is installed and compiled to `public/css/tailwind.css`.
+- Rebuild after UI/template changes with:
+	- `npm run tw:build`
+- Optional live rebuild during development:
+	- `npm run tw:watch`
+
 ## Azure deployment
 
 See `docs/azure-deploy.md`.

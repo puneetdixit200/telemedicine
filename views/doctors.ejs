@@ -1,6 +1,9 @@
 <%- include('partials/layout', { title: 'Doctors', user, body: `
 <div class='card'>
-  <h2>Doctors</h2>
+  <div class='flex items-center justify-between gap-3 flex-wrap'>
+    <h2 class='text-3xl font-semibold m-0'>Find Doctors</h2>
+    <span class='badge'>${doctors.length} results</span>
+  </div>
   <form method='get' action='/doctors' class='row'>
     <div><label>Specialization</label><input name='specialization' value='${(typeof specialization !== 'undefined' ? specialization : '')}' /></div>
     <div><label>Language</label><input name='language' value='${(typeof language !== 'undefined' ? language : '')}' /></div>
@@ -20,13 +23,13 @@ ${doctors.map(d => `
   <div class='card'>
     <div class='row'>
       <div>
-        <h3 style='margin:0;'>${d.fullName}</h3>
+        <h3 class='m-0 text-xl font-semibold'>${d.fullName}</h3>
         <div class='badge'>${(d.doctorProfile && d.doctorProfile.specialization) || 'Doctor'}</div>
         <div class='badge'>${d.online ? 'online' : 'offline'}</div>
-        <p>${(d.doctorProfile && d.doctorProfile.description) || ''}</p>
+        <p class='text-slate-600'>${(d.doctorProfile && d.doctorProfile.description) || ''}</p>
       </div>
       <div style='align-self:center;'>
-        <a href='/doctors/${d.id}'>View profile & slots</a>
+        <a class='inline-flex items-center rounded-lg border border-sky-300 px-3 py-2 text-sky-700 hover:bg-sky-50' href='/doctors/${d.id}'>View profile & slots</a>
       </div>
     </div>
   </div>

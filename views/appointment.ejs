@@ -1,6 +1,6 @@
 <%- include('partials/layout', { title: 'Appointment', user, body: `
 <div class='card'>
-  <h2>Appointment</h2>
+  <h2 class='text-3xl font-semibold m-0 mb-2'>Appointment</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
   ${appointment.status !== 'booked' ? `<p class='badge'>Closed appointment: details are view-only for doctor and patient.</p>` : ''}
@@ -41,7 +41,7 @@
 </div>
 
 <div class='card'>
-  <h3>Medical History</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Medical History</h3>
   <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
   <p><b>Chronic conditions:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
   <p><b>Basic health info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
@@ -49,7 +49,7 @@
   <h4>Previous completed consultations</h4>
   ${history.historyAppointments.length === 0 ? '<p>No previous completed consultations found.</p>' : ''}
   ${history.historyAppointments.map(a => `
-    <div class='card' style='background:#fafafa;'>
+    <div class='card !bg-white/70'>
       <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
       <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
     </div>
@@ -57,7 +57,7 @@
 </div>
 
 <div class='card'>
-  <h3>Pre-consultation</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Pre-consultation</h3>
   ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form method='post' action='/appointments/${appointment.id}/prep'>
       <div style='margin-top:10px;'>
@@ -81,7 +81,7 @@
 </div>
 
 <div class='card'>
-  <h3>Documents</h3>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Documents</h3>
   ${user.role === 'patient' ? `<p class='badge'>Upload is available only when appointment status is booked.</p>` : ''}
   ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form id='uploadForm'>
@@ -113,8 +113,8 @@
 </div>
 
 <div class='card'>
-  <h3>Workspace Uploads (Before Appointment)</h3>
-  <p>These are files uploaded from Patient Workspace for this patient context.</p>
+  <h3 class='text-xl font-semibold m-0 mb-2'>Workspace Uploads (Before Appointment)</h3>
+  <p class='text-slate-600'>These are files uploaded from Patient Workspace for this patient context.</p>
   <div id='workspaceDocumentsList'>
     ${(workspaceDocuments || []).length ? (workspaceDocuments || []).map(d => `
       <div class='row' style='align-items:center;'>

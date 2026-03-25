@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "nodemon app.js",
     "start": "node app.js",
+    "tw:build": "tailwindcss -i ./public/css/src/tailwind.input.css -o ./public/css/tailwind.css --minify",
+    "tw:watch": "tailwindcss -i ./public/css/src/tailwind.input.css -o ./public/css/tailwind.css --watch",
     "lint": "node --check app.js",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -37,10 +39,13 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.27",
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "postcss": "^8.5.8",
     "prisma": "^6.6.0",
     "supertest": "^7.1.0",
+    "tailwindcss": "^3.4.13",
     "testcontainers": "^10.25.0"
   }
 }
