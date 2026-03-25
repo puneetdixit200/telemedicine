@@ -1,11 +1,11 @@
 const { v4: uuidv4 } = require('uuid');
 const { prisma } = require('../models/db');
-const { uploadBuffer, getReadSasUrl } = require('../services/storage.service');
+const { uploadBuffer, getReadSasUrl, getLocalFilePath } = require('../services/storage.service');
 
 async function ensureAppointmentAccess(appointmentId, user) {
   const appt = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    select: { id: true, doctorId: true, patientId: true, familyMemberId: true }
+    select: { id: true, doctorId: true, patientId: true, familyMemberId: true, status: true }
   });
   if (!appt) return null;
   if (user.role === 'admin') return appt;
@@ -24,17 +24,29 @@ const documentsController = {
       if (appointmentId) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
         if (!appt || appt.patientId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+        if (appt.status !== 'booked') return res.status(409).json({ error: 'Appointment is closed. Upload is not allowed.' });
 
-        if (!['user', 'family_member'].includes(uploadFor)) {
-          return res.status(400).json({ error: 'Please choose whether file is for user or family member.' });
+        if (!uploadFor) {
+          return res.status(400).json({ error: 'Please choose who this file is for.' });
         }
 
-        if (appt.familyMemberId && uploadFor !== 'family_member') {
-          return res.status(400).json({ error: 'This appointment is for a family member. Choose family member.' });
+        if (appt.familyMemberId) {
+          if (uploadFor !== appt.familyMemberId) {
+            return res.status(400).json({ error: 'This appointment is for a specific family member. Select the same name.' });
+          }
+
+          const familyMember = await prisma.familyMember.findFirst({
+            where: { id: uploadFor, ownerPatientId: req.user.id }
+          });
+          if (!familyMember) {
+            return res.status(400).json({ error: 'Invalid family member selected.' });
+          }
         }
 
-        if (!appt.familyMemberId && uploadFor !== 'user') {
-          return res.status(400).json({ error: 'This appointment is for main user. Choose user.' });
+        if (!appt.familyMemberId) {
+          if (uploadFor !== 'user') {
+            return res.status(400).json({ error: 'This appointment is for main user. Select main user.' });
+          }
         }
       }
 
@@ -78,7 +90,32 @@ const documentsController = {
       }
 
       const url = getReadSasUrl({ blobName: doc.blobName, expiresInMinutes: 10 });
+      if (url.startsWith('/documents/local/')) {
+        const filePath = getLocalFilePath(doc.blobName);
+        return res.download(filePath, doc.fileName);
+      }
       return res.redirect(url);
+    } catch (e) {
+      return next(e);
+    }
+  },
+
+  downloadLocal: async (req, res, next) => {
+    try {
+      const blobName = decodeURIComponent(req.params.blobName || '');
+      const doc = await prisma.document.findFirst({ where: { blobName } });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+
+      if (req.user.role !== 'admin') {
+        if (doc.ownerId !== req.user.id) {
+          if (!doc.appointmentId) return res.status(403).json({ error: 'Forbidden' });
+          const appt = await ensureAppointmentAccess(doc.appointmentId, req.user);
+          if (!appt) return res.status(403).json({ error: 'Forbidden' });
+        }
+      }
+
+      const filePath = getLocalFilePath(doc.blobName);
+      return res.download(filePath, doc.fileName);
     } catch (e) {
       return next(e);
     }

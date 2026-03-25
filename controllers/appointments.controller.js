@@ -102,12 +102,20 @@ const appointmentsController = {
 
       const presence = getAppointmentPresence(appt);
       const history = await loadPatientHistory(appt);
+      const familyMembers =
+        req.user.role === 'patient' && req.user.id === appt.patientId
+          ? await prisma.familyMember.findMany({
+              where: { ownerPatientId: req.user.id },
+              orderBy: { fullName: 'asc' }
+            })
+          : [];
 
       return res.render('appointment', {
         user: req.user,
         appointment: appt,
         presence,
         history,
+        familyMembers,
         error: null,
         message: null
       });
@@ -200,11 +208,19 @@ const appointmentsController = {
       if (!parsed.success) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
         const history = appt ? await loadPatientHistory(appt) : null;
+        const familyMembers =
+          appt && req.user.role === 'patient' && req.user.id === appt.patientId
+            ? await prisma.familyMember.findMany({
+                where: { ownerPatientId: req.user.id },
+                orderBy: { fullName: 'asc' }
+              })
+            : [];
         return res.status(400).render('appointment', {
           user: req.user,
           appointment: appt,
           presence: appt ? getAppointmentPresence(appt) : null,
           history,
+          familyMembers,
           error: 'Invalid input',
           message: null
         });
@@ -212,12 +228,31 @@ const appointmentsController = {
 
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
+      if (appt.status !== 'booked') {
+        return res.status(409).render('appointment', {
+          user: req.user,
+          appointment: appt,
+          presence: getAppointmentPresence(appt),
+          history: await loadPatientHistory(appt),
+          familyMembers: await prisma.familyMember.findMany({ where: { ownerPatientId: req.user.id }, orderBy: { fullName: 'asc' } }),
+          error: 'Appointment is closed. Editing is not allowed.',
+          message: null
+        });
+      }
       if (req.user.role !== 'patient' || req.user.id !== appt.patientId) {
+        const familyMembers =
+          req.user.role === 'patient' && req.user.id === appt.patientId
+            ? await prisma.familyMember.findMany({
+                where: { ownerPatientId: req.user.id },
+                orderBy: { fullName: 'asc' }
+              })
+            : [];
         return res.status(403).render('appointment', {
           user: req.user,
           appointment: appt,
           presence: getAppointmentPresence(appt),
           history: await loadPatientHistory(appt),
+          familyMembers,
           error: 'Only patient can update this.',
           message: null
         });
@@ -237,11 +272,16 @@ const appointmentsController = {
         }
       });
 
+      const familyMembers = await prisma.familyMember.findMany({
+        where: { ownerPatientId: req.user.id },
+        orderBy: { fullName: 'asc' }
+      });
       return res.render('appointment', {
         user: req.user,
         appointment: updated,
         presence: getAppointmentPresence(updated),
         history: await loadPatientHistory(updated),
+        familyMembers,
         error: null,
         message: 'Saved.'
       });

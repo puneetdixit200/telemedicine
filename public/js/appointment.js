@@ -47,7 +47,11 @@
       var status = document.getElementById('uploadStatus');
       status.textContent = 'Uploading...';
       var data = new FormData(form);
-      var res = await fetch('/documents/upload', { method: 'POST', body: data });
+      var res = await fetch('/documents/upload', {
+        method: 'POST',
+        body: data,
+        headers: { Accept: 'application/json' }
+      });
       var json = await res.json().catch(function () {
         return null;
       });

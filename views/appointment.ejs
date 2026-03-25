@@ -3,6 +3,7 @@
   <h2>Appointment</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
+  ${appointment.status !== 'booked' ? `<p class='badge'>Closed appointment: view only</p>` : ''}
 
   <p><b>Time:</b> ${new Date(appointment.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</p>
   <p><b>Status:</b> <span class='badge'>${appointment.status}</span> <span class='badge'>${appointment.mode}</span></p>
@@ -30,9 +31,11 @@
       ` : ''}
     </div>
     <div>
-      <form method='post' action='/appointments/${appointment.id}/cancel' style='margin:0;'>
-        <button class='secondary' type='submit'>Cancel appointment</button>
-      </form>
+      ${appointment.status === 'booked' ? `
+        <form method='post' action='/appointments/${appointment.id}/cancel' style='margin:0;'>
+          <button class='secondary' type='submit'>Cancel appointment</button>
+        </form>
+      ` : ''}
     </div>
   </div>
 </div>
@@ -55,7 +58,7 @@
 
 <div class='card'>
   <h3>Pre-consultation</h3>
-  ${user.role === 'patient' ? `
+  ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form method='post' action='/appointments/${appointment.id}/prep'>
       <div style='margin-top:10px;'>
         <label>Problem description</label>
@@ -80,18 +83,23 @@
 <div class='card'>
   <h3>Documents</h3>
   ${user.role === 'patient' ? `
+  ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form id='uploadForm'>
       <input type='hidden' name='appointmentId' value='${appointment.id}' />
       <label>File is for</label>
       <select name='uploadFor' required>
-        <option value='user' ${appointment.familyMember ? '' : 'selected'}>Main user</option>
-        <option value='family_member' ${appointment.familyMember ? 'selected' : ''}>Family member</option>
+        <option value='user' ${appointment.familyMember ? '' : 'selected'}>Main user (${appointment.patient.fullName})</option>
+        ${(familyMembers || []).map((m) => `
+          <option value='${m.id}' ${appointment.familyMember && appointment.familyMember.id === m.id ? 'selected' : ''}>
+            ${m.fullName}${m.relationToPatient ? ` (${m.relationToPatient})` : ''}
+          </option>
+        `).join('')}
       </select>
       <input name='file' type='file' required />
       <button type='submit'>Upload Medical Document</button>
       <div id='uploadStatus'></div>
     </form>
-  ` : ''}
+  ` : user.role === 'patient' ? '<p class="badge">Upload disabled (appointment closed)</p>' : ''}
 
   <div id='documentsList'>
     ${appointment.documents && appointment.documents.length ? appointment.documents.map(d => `

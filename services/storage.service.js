@@ -4,6 +4,8 @@ const {
   generateBlobSASQueryParameters,
   BlobSASPermissions
 } = require('@azure/storage-blob');
+const fs = require('fs');
+const path = require('path');
 
 function getContainerName() {
   return process.env.AZURE_STORAGE_CONTAINER || 'patient-documents';
@@ -17,6 +19,35 @@ function requireConnString() {
     throw err;
   }
   return cs;
+}
+
+function hasUsableAzureConnectionString() {
+  const cs = process.env.AZURE_STORAGE_CONNECTION_STRING || '';
+  if (!cs.trim()) return false;
+  try {
+    const parsed = parseAccountFromConnectionString(cs);
+    if (!parsed.accountName || !parsed.accountKey) return false;
+    BlobServiceClient.fromConnectionString(cs);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function localUploadsRoot() {
+  return path.join(process.cwd(), 'uploads');
+}
+
+function getLocalFilePath(blobName) {
+  return path.join(localUploadsRoot(), blobName);
+}
+
+async function uploadBufferLocal({ blobName, buffer }) {
+  const root = localUploadsRoot();
+  const filePath = getLocalFilePath(blobName);
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.promises.writeFile(filePath, buffer);
+  return { blobName };
 }
 
 function parseAccountFromConnectionString(connectionString) {
@@ -40,6 +71,10 @@ async function getContainerClient() {
 }
 
 async function uploadBuffer({ blobName, buffer, contentType }) {
+  if (!hasUsableAzureConnectionString()) {
+    return uploadBufferLocal({ blobName, buffer });
+  }
+
   const container = await getContainerClient();
   const client = container.getBlockBlobClient(blobName);
   await client.uploadData(buffer, {
@@ -51,6 +86,10 @@ async function uploadBuffer({ blobName, buffer, contentType }) {
 }
 
 function getReadSasUrl({ blobName, expiresInMinutes = 10 }) {
+  if (!hasUsableAzureConnectionString()) {
+    return `/documents/local/${encodeURIComponent(blobName)}`;
+  }
+
   const connectionString = requireConnString();
   const { accountName, accountKey } = parseAccountFromConnectionString(connectionString);
   if (!accountName || !accountKey) {
@@ -76,4 +115,4 @@ function getReadSasUrl({ blobName, expiresInMinutes = 10 }) {
   return `https://${accountName}.blob.core.windows.net/${containerName}/${encodeURI(blobName)}?${sas}`;
 }
 
-module.exports = { uploadBuffer, getReadSasUrl };
+module.exports = { uploadBuffer, getReadSasUrl, getLocalFilePath };
