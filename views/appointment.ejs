@@ -3,7 +3,7 @@
   <h2>Appointment</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
-  ${appointment.status !== 'booked' ? `<p class='badge'>Closed appointment: view only</p>` : ''}
+  ${appointment.status !== 'booked' ? `<p class='badge'>Closed appointment: details are view-only for doctor and patient.</p>` : ''}
 
   <p><b>Time:</b> ${new Date(appointment.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</p>
   <p><b>Status:</b> <span class='badge'>${appointment.status}</span> <span class='badge'>${appointment.mode}</span></p>
@@ -82,7 +82,7 @@
 
 <div class='card'>
   <h3>Documents</h3>
-  ${user.role === 'patient' ? `
+  ${user.role === 'patient' ? `<p class='badge'>Upload is available only when appointment status is booked.</p>` : ''}
   ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form id='uploadForm'>
       <input type='hidden' name='appointmentId' value='${appointment.id}' />
@@ -99,7 +99,7 @@
       <button type='submit'>Upload Medical Document</button>
       <div id='uploadStatus'></div>
     </form>
-  ` : user.role === 'patient' ? '<p class="badge">Upload disabled (appointment closed)</p>' : ''}
+  ` : user.role === 'patient' ? '<p class="error">Upload disabled because this appointment is closed/cancelled. Book a new appointment to upload new files.</p>' : ''}
 
   <div id='documentsList'>
     ${appointment.documents && appointment.documents.length ? appointment.documents.map(d => `
@@ -109,6 +109,20 @@
         <div><a href='/documents/${d.id}/download'>Download</a></div>
       </div>
     `).join('') : '<p>No documents yet.</p>'}
+  </div>
+</div>
+
+<div class='card'>
+  <h3>Workspace Uploads (Before Appointment)</h3>
+  <p>These are files uploaded from Patient Workspace for this patient context.</p>
+  <div id='workspaceDocumentsList'>
+    ${(workspaceDocuments || []).length ? (workspaceDocuments || []).map(d => `
+      <div class='row' style='align-items:center;'>
+        <div>${d.fileName}</div>
+        <div><span class='badge'>${Math.round(d.sizeBytes/1024)} KB</span></div>
+        <div><a href='/documents/${d.id}/download'>Download</a></div>
+      </div>
+    `).join('') : '<p>No workspace uploads found.</p>'}
   </div>
 </div>
 

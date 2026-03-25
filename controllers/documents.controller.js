@@ -21,25 +21,30 @@ const documentsController = {
 
       const appointmentId = req.body.appointmentId || null;
       const uploadFor = req.body.uploadFor || '';
+      let familyTargetId = null;
+
+      if (!uploadFor) {
+        return res.status(400).json({ error: 'Please choose who this file is for.' });
+      }
+
+      if (uploadFor !== 'user') {
+        const familyMember = await prisma.familyMember.findFirst({
+          where: { id: uploadFor, ownerPatientId: req.user.id }
+        });
+        if (!familyMember) {
+          return res.status(400).json({ error: 'Invalid family member selected.' });
+        }
+        familyTargetId = familyMember.id;
+      }
+
       if (appointmentId) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
         if (!appt || appt.patientId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
         if (appt.status !== 'booked') return res.status(409).json({ error: 'Appointment is closed. Upload is not allowed.' });
 
-        if (!uploadFor) {
-          return res.status(400).json({ error: 'Please choose who this file is for.' });
-        }
-
         if (appt.familyMemberId) {
-          if (uploadFor !== appt.familyMemberId) {
+          if (familyTargetId !== appt.familyMemberId) {
             return res.status(400).json({ error: 'This appointment is for a specific family member. Select the same name.' });
-          }
-
-          const familyMember = await prisma.familyMember.findFirst({
-            where: { id: uploadFor, ownerPatientId: req.user.id }
-          });
-          if (!familyMember) {
-            return res.status(400).json({ error: 'Invalid family member selected.' });
           }
         }
 
@@ -54,13 +59,15 @@ const documentsController = {
         .replace(/[^a-zA-Z0-9._-]/g, '_')
         .replace(/_+/g, '_')
         .slice(0, 120);
-      const blobName = `${req.user.id}/${uuidv4()}-${safeName}`;
+      const ownerSegment = familyTargetId ? `family_${familyTargetId}` : 'user';
+      const blobName = `${req.user.id}/${ownerSegment}/${uuidv4()}-${safeName}`;
 
       await uploadBuffer({ blobName, buffer: req.file.buffer, contentType: req.file.mimetype });
 
       const doc = await prisma.document.create({
         data: {
           ownerId: req.user.id,
+          familyMemberId: familyTargetId,
           appointmentId,
           fileName: req.file.originalname,
           contentType: req.file.mimetype,

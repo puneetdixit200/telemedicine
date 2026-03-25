@@ -93,6 +93,14 @@ const prescriptionsController = {
       if (req.user.role !== 'doctor' || req.user.id !== appt.doctorId) {
         return res.status(403).render('dashboard', { user: req.user, message: 'Only the assigned doctor can write this.' });
       }
+      if (appt.status !== 'booked') {
+        return res.status(409).render('prescription', {
+          user: req.user,
+          appointment: appt,
+          error: 'Appointment is closed. Prescription cannot be edited.',
+          message: null
+        });
+      }
 
       const parsed = upsertSchema.safeParse(req.body);
       if (!parsed.success) {

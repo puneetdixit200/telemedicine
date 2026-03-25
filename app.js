@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const { prisma } = require('./models/db');
 
 const { attachUser } = require('./middleware/auth');
 const { errorHandler, notFoundHandler } = require('./middleware/errors');

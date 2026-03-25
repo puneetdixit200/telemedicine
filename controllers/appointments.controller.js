@@ -66,6 +66,20 @@ async function loadPatientHistory(appointment) {
   };
 }
 
+async function loadWorkspaceDocuments(appointment) {
+  const where = {
+    ownerId: appointment.patientId,
+    appointmentId: null,
+    familyMemberId: appointment.familyMemberId || null
+  };
+
+  return prisma.document.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 100
+  });
+}
+
 const appointmentsController = {
   listMyAppointments: async (req, res, next) => {
     try {
@@ -84,8 +98,8 @@ const appointmentsController = {
           familyMember: { select: { id: true, fullName: true } },
           prescription: { select: { id: true } }
         },
-        orderBy: { startAt: 'asc' },
-        take: 100
+        orderBy: { startAt: 'desc' },
+        take: 300
       });
 
       return res.render('appointments', { user: req.user, appointments });
@@ -102,6 +116,7 @@ const appointmentsController = {
 
       const presence = getAppointmentPresence(appt);
       const history = await loadPatientHistory(appt);
+      const workspaceDocuments = await loadWorkspaceDocuments(appt);
       const familyMembers =
         req.user.role === 'patient' && req.user.id === appt.patientId
           ? await prisma.familyMember.findMany({
@@ -115,6 +130,7 @@ const appointmentsController = {
         appointment: appt,
         presence,
         history,
+        workspaceDocuments,
         familyMembers,
         error: null,
         message: null
@@ -220,6 +236,7 @@ const appointmentsController = {
           appointment: appt,
           presence: appt ? getAppointmentPresence(appt) : null,
           history,
+          workspaceDocuments: appt ? await loadWorkspaceDocuments(appt) : [],
           familyMembers,
           error: 'Invalid input',
           message: null
@@ -229,11 +246,15 @@ const appointmentsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
       if (appt.status !== 'booked') {
+        return res.status(409).render('dashboard', { user: req.user, message: 'Appointment already closed.' });
+      }
+      if (appt.status !== 'booked') {
         return res.status(409).render('appointment', {
           user: req.user,
           appointment: appt,
           presence: getAppointmentPresence(appt),
           history: await loadPatientHistory(appt),
+          workspaceDocuments: await loadWorkspaceDocuments(appt),
           familyMembers: await prisma.familyMember.findMany({ where: { ownerPatientId: req.user.id }, orderBy: { fullName: 'asc' } }),
           error: 'Appointment is closed. Editing is not allowed.',
           message: null
@@ -252,6 +273,7 @@ const appointmentsController = {
           appointment: appt,
           presence: getAppointmentPresence(appt),
           history: await loadPatientHistory(appt),
+          workspaceDocuments: await loadWorkspaceDocuments(appt),
           familyMembers,
           error: 'Only patient can update this.',
           message: null
@@ -281,6 +303,7 @@ const appointmentsController = {
         appointment: updated,
         presence: getAppointmentPresence(updated),
         history: await loadPatientHistory(updated),
+        workspaceDocuments: await loadWorkspaceDocuments(updated),
         familyMembers,
         error: null,
         message: 'Saved.'
