@@ -23,7 +23,11 @@ function getUtcRangeForDate(dateStr) {
 const doctorsController = {
   listDoctors: async (req, res, next) => {
     try {
-      const { specialization, language } = req.query;
+      if (req.user.role === 'doctor') {
+        return res.redirect('/doctors/me/slots');
+      }
+
+      const { specialization, language, online } = req.query;
       const where = {
         role: 'doctor',
         isActive: true,
@@ -46,11 +50,19 @@ const doctorsController = {
         online: Boolean(d.doctorProfile?.callEnabled) && isRecentlyOnline(d.lastSeenAt)
       }));
 
+      const doctorsFiltered =
+        online === 'online'
+          ? doctorsWithStatus.filter((d) => d.online)
+          : online === 'offline'
+            ? doctorsWithStatus.filter((d) => !d.online)
+            : doctorsWithStatus;
+
       return res.render('doctors', {
         user: req.user,
-        doctors: doctorsWithStatus,
+        doctors: doctorsFiltered,
         specialization: specialization || '',
-        language: language || ''
+        language: language || '',
+        online: online || 'all'
       });
     } catch (e) {
       return next(e);
@@ -60,6 +72,10 @@ const doctorsController = {
   viewDoctor: async (req, res, next) => {
     try {
       const doctorId = req.params.doctorId;
+      if (req.user.role === 'doctor' && req.user.id !== doctorId) {
+        return res.status(403).render('dashboard', { user: req.user, message: 'Doctors cannot access other doctor profiles.' });
+      }
+
       const doctor = await prisma.user.findUnique({
         where: { id: doctorId },
         include: { doctorProfile: true }

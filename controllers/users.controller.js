@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const { prisma } = require('../models/db');
+const { isRecentlyOnline } = require('../services/presence.service');
 
 const updateSchema = z.object({
   fullName: z.string().min(2),
@@ -27,6 +28,24 @@ const usersController = {
         data: { lastSeenAt: new Date() }
       });
       return res.json({ ok: true, at: new Date().toISOString() });
+    } catch (e) {
+      return next(e);
+    }
+  },
+
+  presenceStatus: async (req, res, next) => {
+    try {
+      const fresh = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { doctorProfile: true }
+      });
+      if (!fresh) return res.status(404).json({ error: 'User not found' });
+
+      const isPresenceOnline = isRecentlyOnline(fresh.lastSeenAt);
+      const isCallOnline =
+        fresh.role === 'doctor' ? Boolean(fresh.doctorProfile?.callEnabled) && isPresenceOnline : isPresenceOnline;
+
+      return res.json({ ok: true, isPresenceOnline, isCallOnline, role: fresh.role });
     } catch (e) {
       return next(e);
     }

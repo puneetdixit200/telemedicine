@@ -11,5 +11,6 @@ router.get('/:appointmentId/presence', authRequired, appointmentsController.getP
 router.post('/book', authRequired, roleRequired('patient'), appointmentsController.book);
 router.post('/:appointmentId/prep', authRequired, roleRequired('patient'), appointmentsController.updatePreconsult);
 router.post('/:appointmentId/cancel', authRequired, appointmentsController.cancel);
+router.post('/:appointmentId/end', authRequired, appointmentsController.endAppointment);
 
 module.exports = router;

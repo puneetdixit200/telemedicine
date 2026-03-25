@@ -9,11 +9,16 @@
 <body data-authenticated="<%= user ? 'true' : 'false' %>">
   <div class="container">
     <div class="nav">
-      <a href="/dashboard">Dashboard</a>
-      <a href="/doctors">Doctors</a>
-      <a href="/appointments">Appointments</a>
+      <% if (user) { %>
+        <a href="/dashboard">Dashboard</a>
+        <% if (user.role !== 'doctor') { %>
+          <a href="/doctors">Doctors</a>
+        <% } %>
+        <a href="/appointments">Appointments</a>
+      <% } %>
       <div class="spacer"></div>
       <% if (user) { %>
+        <span id="selfPresenceBadge" class="badge"><%= user.isCallOnline ? 'online' : 'offline' %></span>
         <span class="badge"><%= user.role %></span>
         <span><%= user.fullName %></span>
         <form method="post" action="/auth/logout" style="margin:0;">

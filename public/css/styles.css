@@ -14,3 +14,7 @@ a { color: #2563eb; text-decoration: none; }
 .error { color: #b91c1c; }
 .success { color: #166534; }
 pre { white-space: pre-wrap; }
+.med-list { display: grid; gap: 10px; }
+.med-item { border: 1px solid #dbe1ea; background: #fff; border-radius: 10px; padding: 10px; }
+.med-title { font-weight: 600; margin-bottom: 6px; }
+.med-meta { display: flex; flex-wrap: wrap; gap: 6px; }

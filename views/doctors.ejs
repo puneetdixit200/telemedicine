@@ -4,6 +4,14 @@
   <form method='get' action='/doctors' class='row'>
     <div><label>Specialization</label><input name='specialization' value='${(typeof specialization !== 'undefined' ? specialization : '')}' /></div>
     <div><label>Language</label><input name='language' value='${(typeof language !== 'undefined' ? language : '')}' /></div>
+    <div>
+      <label>Online</label>
+      <select name='online'>
+        <option value='all' ${(online || 'all') === 'all' ? 'selected' : ''}>All</option>
+        <option value='online' ${(online || 'all') === 'online' ? 'selected' : ''}>Online only</option>
+        <option value='offline' ${(online || 'all') === 'offline' ? 'selected' : ''}>Offline only</option>
+      </select>
+    </div>
     <div style='align-self:end;'><button type='submit'>Filter</button></div>
   </form>
 </div>

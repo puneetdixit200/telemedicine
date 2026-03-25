@@ -23,6 +23,13 @@
       <a href='/prescriptions/${appointment.id}'>Prescription</a>
     </div>
     <div>
+      ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? `
+        <form method='post' action='/appointments/${appointment.id}/end' style='margin:0;'>
+          <button type='submit'>End appointment</button>
+        </form>
+      ` : ''}
+    </div>
+    <div>
       <form method='post' action='/appointments/${appointment.id}/cancel' style='margin:0;'>
         <button class='secondary' type='submit'>Cancel appointment</button>
       </form>

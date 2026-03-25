@@ -11,9 +11,20 @@
     <div class='card' style='background:#fafafa;'>
       <p><b>Diagnosis:</b> ${appointment.prescription.diagnosis}</p>
       <p><b>Medications:</b></p>
-      <pre>${JSON.stringify(appointment.prescription.items, null, 2)}</pre>
+      ${(Array.isArray(appointment.prescription.items) && appointment.prescription.items.length > 0)
+        ? `<div class='med-list'>${appointment.prescription.items.map((i, idx) => `
+            <div class='med-item'>
+              <div class='med-title'>${idx + 1}. ${i.name || 'Medication'}</div>
+              <div class='med-meta'>
+                <span class='badge'>Dosage: ${i.dosage || 'N/A'}</span>
+                <span class='badge'>Frequency: ${i.frequency || 'N/A'}</span>
+                <span class='badge'>Duration: ${i.duration || 'N/A'}</span>
+              </div>
+            </div>
+          `).join('')}</div>`
+        : '<p>No medications listed.</p>'}
       <p><b>Instructions:</b></p>
-      <pre>${appointment.prescription.instructions || ''}</pre>
+      <p>${appointment.prescription.instructions || 'No instructions provided.'}</p>
       <p><a href='/prescriptions/${appointment.id}/pdf'>Download PDF</a></p>
     </div>
   ` : '<p>No prescription yet.</p>'}

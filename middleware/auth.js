@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../models/db');
+const { isRecentlyOnline } = require('../services/presence.service');
 
 function signToken(user) {
   const payload = { sub: user.id, role: user.role };
@@ -37,6 +38,12 @@ async function attachUser(req, res, next) {
       res.clearCookie('token');
       return next();
     }
+
+    user.isPresenceOnline = isRecentlyOnline(user.lastSeenAt);
+    user.isCallOnline =
+      user.role === 'doctor'
+        ? Boolean(user.doctorProfile?.callEnabled) && user.isPresenceOnline
+        : user.isPresenceOnline;
 
     req.user = user;
     return next();

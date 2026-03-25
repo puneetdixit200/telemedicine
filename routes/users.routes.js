@@ -5,6 +5,7 @@ const { usersController } = require('../controllers/users.controller');
 const router = express.Router();
 
 router.post('/presence/ping', authRequired, usersController.pingPresence);
+router.get('/presence/status', authRequired, usersController.presenceStatus);
 router.get('/me', authRequired, usersController.viewMe);
 router.post('/me', authRequired, usersController.updateMe);
 

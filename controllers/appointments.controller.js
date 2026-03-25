@@ -213,6 +213,34 @@ const appointmentsController = {
       return next(e);
     }
   }
+,
+
+  endAppointment: async (req, res, next) => {
+    try {
+      const appointmentId = req.params.appointmentId;
+      const appt = await ensureAppointmentAccess(appointmentId, req.user);
+      if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
+
+      if (req.user.role !== 'admin' && req.user.id !== appt.patientId && req.user.id !== appt.doctorId) {
+        return res.status(403).render('dashboard', { user: req.user, message: 'Forbidden' });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { status: 'completed' }
+        });
+        await tx.callSession.updateMany({
+          where: { appointmentId },
+          data: { status: 'ended', endedAt: new Date() }
+        });
+      });
+
+      return res.redirect(`/appointments/${appointmentId}`);
+    } catch (e) {
+      return next(e);
+    }
+  }
 };
 
 module.exports = { appointmentsController };
