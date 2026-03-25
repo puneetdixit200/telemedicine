@@ -54,9 +54,17 @@ Seeded users:
 
 - Tailwind is installed and compiled to `public/css/tailwind.css`.
 - Rebuild after UI/template changes with:
-	- `npm run tw:build`
+  - `npm run tw:build`
 - Optional live rebuild during development:
-	- `npm run tw:watch`
+  - `npm run tw:watch`
+
+## Azure Uploads
+
+- Uploads are configured to use Azure Blob storage only (`AZURE_UPLOADS_MODE=azure-only`).
+- Migrate any existing local `uploads/` files to Azure:
+  - `npm run uploads:migrate:azure`
+- Migrate and remove local files after successful upload:
+  - `npm run uploads:migrate:azure:clean`
 
 ## Azure deployment
 

@@ -9,6 +9,8 @@
     "start": "node app.js",
     "tw:build": "tailwindcss -i ./public/css/src/tailwind.input.css -o ./public/css/tailwind.css --minify",
     "tw:watch": "tailwindcss -i ./public/css/src/tailwind.input.css -o ./public/css/tailwind.css --watch",
+    "uploads:migrate:azure": "node scripts/migrate-local-uploads-to-azure.js",
+    "uploads:migrate:azure:clean": "node scripts/migrate-local-uploads-to-azure.js --delete-local",
     "lint": "node --check app.js",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

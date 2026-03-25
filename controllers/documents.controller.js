@@ -13,6 +13,33 @@ async function ensureAppointmentAccess(appointmentId, user) {
   return appt;
 }
 
+async function canAccessDocument(user, doc) {
+  if (user.role === 'admin') return true;
+  if (doc.ownerId === user.id) return true;
+
+  // Appointment-linked docs keep strict appointment ACL.
+  if (doc.appointmentId) {
+    const appt = await ensureAppointmentAccess(doc.appointmentId, user);
+    return Boolean(appt);
+  }
+
+  // Workspace docs (appointmentId=null): allow assigned doctors who have
+  // seen this patient context (main user or the same family member context).
+  if (user.role === 'doctor') {
+    const related = await prisma.appointment.findFirst({
+      where: {
+        doctorId: user.id,
+        patientId: doc.ownerId,
+        familyMemberId: doc.familyMemberId || null
+      },
+      select: { id: true }
+    });
+    return Boolean(related);
+  }
+
+  return false;
+}
+
 const documentsController = {
   upload: async (req, res, next) => {
     try {
@@ -88,12 +115,9 @@ const documentsController = {
       const doc = await prisma.document.findUnique({ where: { id: documentId } });
       if (!doc) return res.status(404).json({ error: 'Not found' });
 
-      if (req.user.role !== 'admin') {
-        if (doc.ownerId !== req.user.id) {
-          if (!doc.appointmentId) return res.status(403).json({ error: 'Forbidden' });
-          const appt = await ensureAppointmentAccess(doc.appointmentId, req.user);
-          if (!appt) return res.status(403).json({ error: 'Forbidden' });
-        }
+      const allowed = await canAccessDocument(req.user, doc);
+      if (!allowed) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
 
       const url = getReadSasUrl({ blobName: doc.blobName, expiresInMinutes: 10 });
@@ -113,12 +137,9 @@ const documentsController = {
       const doc = await prisma.document.findFirst({ where: { blobName } });
       if (!doc) return res.status(404).json({ error: 'Not found' });
 
-      if (req.user.role !== 'admin') {
-        if (doc.ownerId !== req.user.id) {
-          if (!doc.appointmentId) return res.status(403).json({ error: 'Forbidden' });
-          const appt = await ensureAppointmentAccess(doc.appointmentId, req.user);
-          if (!appt) return res.status(403).json({ error: 'Forbidden' });
-        }
+      const allowed = await canAccessDocument(req.user, doc);
+      if (!allowed) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
 
       const filePath = getLocalFilePath(doc.blobName);

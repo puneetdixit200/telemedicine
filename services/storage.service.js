@@ -11,6 +11,10 @@ function getContainerName() {
   return process.env.AZURE_STORAGE_CONTAINER || 'patient-documents';
 }
 
+function getUploadsMode() {
+  return String(process.env.AZURE_UPLOADS_MODE || 'azure-only').toLowerCase();
+}
+
 function requireConnString() {
   const cs = process.env.AZURE_STORAGE_CONNECTION_STRING;
   if (!cs) {
@@ -32,6 +36,10 @@ function hasUsableAzureConnectionString() {
   } catch (_) {
     return false;
   }
+}
+
+function isAzureConfigured() {
+  return hasUsableAzureConnectionString();
 }
 
 function localUploadsRoot() {
@@ -70,8 +78,26 @@ async function getContainerClient() {
   return container;
 }
 
-async function uploadBuffer({ blobName, buffer, contentType }) {
+async function assertAzureReady() {
   if (!hasUsableAzureConnectionString()) {
+    const err = new Error('Azure storage is not configured or connection string is invalid.');
+    err.status = 500;
+    throw err;
+  }
+  await getContainerClient();
+}
+
+async function uploadBuffer({ blobName, buffer, contentType }) {
+  const mode = getUploadsMode();
+  const azureReady = hasUsableAzureConnectionString();
+
+  if (mode !== 'local-only' && !azureReady) {
+    const err = new Error('Azure-only upload mode is enabled, but Azure storage is not configured.');
+    err.status = 500;
+    throw err;
+  }
+
+  if (mode === 'local-only') {
     return uploadBufferLocal({ blobName, buffer });
   }
 
@@ -115,4 +141,12 @@ function getReadSasUrl({ blobName, expiresInMinutes = 10 }) {
   return `https://${accountName}.blob.core.windows.net/${containerName}/${encodeURI(blobName)}?${sas}`;
 }
 
-module.exports = { uploadBuffer, getReadSasUrl, getLocalFilePath };
+module.exports = {
+  uploadBuffer,
+  getReadSasUrl,
+  getLocalFilePath,
+  localUploadsRoot,
+  getUploadsMode,
+  isAzureConfigured,
+  assertAzureReady
+};
