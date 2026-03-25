@@ -11,7 +11,7 @@ const { prisma } = require('./models/db');
 
 const { attachUser } = require('./middleware/auth');
 const { errorHandler, notFoundHandler } = require('./middleware/errors');
-const { initSocket } = require('./realtime/socket');
+const { initSocket } = require('./services/realtime.service');
 
 const authRoutes = require('./routes/auth.routes');
 const usersRoutes = require('./routes/users.routes');

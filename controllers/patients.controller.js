@@ -1,23 +1,9 @@
-const { z } = require('zod');
 const { prisma } = require('../models/db');
-
-const schema = z.object({
-  chronicConditions: z.string().optional().or(z.literal('')),
-  basicHealthInfo: z.string().optional().or(z.literal(''))
-});
-
-const familyCreateSchema = z.object({
-  fullName: z.string().min(2),
-  relationToPatient: z.string().optional().or(z.literal('')),
-  gender: z.string().optional().or(z.literal('')),
-  dateOfBirth: z.string().optional().or(z.literal('')),
-  chronicConditions: z.string().optional().or(z.literal('')),
-  basicHealthInfo: z.string().optional().or(z.literal(''))
-});
-
-const familyUpdateSchema = familyCreateSchema.extend({
-  familyMemberId: z.string().uuid()
-});
+const {
+  patientHealthSchema,
+  familyCreateSchema,
+  familyUpdateSchema
+} = require('../models/schemas/patients.schemas');
 
 async function loadWorkspaceData(userId) {
   const user = await prisma.user.findUnique({
@@ -65,7 +51,7 @@ const patientsController = {
 
   updateMyHealth: async (req, res, next) => {
     try {
-      const parsed = schema.safeParse(req.body);
+      const parsed = patientHealthSchema.safeParse(req.body);
       if (!parsed.success) {
         const user = await prisma.user.findUnique({ where: { id: req.user.id }, include: { patientProfile: true } });
         return res.status(400).render('patient-health', { user, error: 'Invalid input', message: null });

@@ -1,17 +1,6 @@
-const { z } = require('zod');
 const { prisma } = require('../models/db');
+const { bookSchema, preconsultSchema } = require('../models/schemas/appointments.schemas');
 const { getAppointmentPresence } = require('../services/presence.service');
-
-const bookSchema = z.object({
-  slotId: z.string().uuid(),
-  mode: z.enum(['video', 'audio', 'text']).default('video'),
-  familyMemberId: z.string().uuid().optional().or(z.literal(''))
-});
-
-const preconsultSchema = z.object({
-  problemDescription: z.string().max(4000).optional().or(z.literal('')),
-  medicationsText: z.string().max(4000).optional().or(z.literal(''))
-});
 
 async function ensureAppointmentAccess(appointmentId, user) {
   const appt = await prisma.appointment.findUnique({
@@ -102,7 +91,20 @@ const appointmentsController = {
         take: 300
       });
 
-      return res.render('appointments', { user: req.user, appointments });
+      const now = new Date();
+      const upcomingAppointments = appointments
+        .filter((a) => a.status === 'booked' && new Date(a.startAt) >= now)
+        .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+
+      const doneAppointments = appointments
+        .filter((a) => !(a.status === 'booked' && new Date(a.startAt) >= now))
+        .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
+
+      return res.render('appointments', {
+        user: req.user,
+        upcomingAppointments,
+        doneAppointments
+      });
     } catch (e) {
       return next(e);
     }

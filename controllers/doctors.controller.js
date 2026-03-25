@@ -1,17 +1,6 @@
-const { z } = require('zod');
 const { prisma } = require('../models/db');
+const { bulkSchema, callStateSchema } = require('../models/schemas/doctors.schemas');
 const { isRecentlyOnline } = require('../services/presence.service');
-
-const bulkSchema = z.object({
-  date: z.string().min(10), // YYYY-MM-DD
-  startHourUtc: z.string().optional().or(z.literal('')),
-  endHourUtc: z.string().optional().or(z.literal('')),
-  action: z.enum(['make_available', 'make_busy'])
-});
-
-const callStateSchema = z.object({
-  state: z.enum(['online', 'offline'])
-});
 
 function getUtcRangeForDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map((v) => Number(v));
