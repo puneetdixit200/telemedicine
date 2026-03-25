@@ -28,7 +28,28 @@ function createApp() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            'https://translate.google.com',
+            'https://translate.googleapis.com',
+            'https://translate-pa.googleapis.com',
+            'https://www.gstatic.com',
+            "'sha256-GMDREuNQNJynOQvCXFCl/JLp3JtjQWFHx+V4UdEFI34='"
+          ],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'https://translate.googleapis.com', 'https://translate-pa.googleapis.com', 'https://translate.google.com'],
+          frameSrc: ["'self'", 'https://translate.google.com', 'https://*.google.com'],
+          fontSrc: ["'self'", 'https:', 'data:']
+        }
+      }
+    })
+  );
   app.use(morgan('dev'));
   app.use(
     rateLimit({

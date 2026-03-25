@@ -4,6 +4,20 @@ Node.js + Express + PostgreSQL + WebRTC (Socket.IO signaling) + Azure Blob Stora
 
 ## Quickstart (local)
 
+Fastest way (single file startup):
+
+- Run `run-app.bat`
+
+What it does automatically:
+
+- Creates `.env` from `.env.example` (if missing)
+- Installs npm dependencies (if needed)
+- Starts PostgreSQL with Docker Compose (if Docker is available)
+- Runs Prisma generate + migrate deploy
+- Starts the app on `http://localhost:3000`
+
+If Docker is not installed, keep PostgreSQL running manually and then run `run-app.bat`.
+
 1. Copy env:
 
 - `copy .env.example .env`
@@ -30,6 +44,11 @@ Seeded users:
 - Patient: `patient1@example.com` / `Password123!`
 - Doctor: `doctor1@example.com` / `Password123!`
 - Admin: `admin@example.com` / `Password123!`
+
+## Translation
+
+- Use the language selector in the top navigation.
+- Selecting a language applies full-page translation after reload.
 
 ## Azure deployment
 
