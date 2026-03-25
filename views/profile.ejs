@@ -1,11 +1,15 @@
 <%- include('partials/layout', { title: 'My Profile', user, body: `
-<div class='card'>
-  <p class='text-xs uppercase tracking-wider text-sky-700 font-semibold mb-1'>Account Center</p>
-  <h2 class='text-3xl font-semibold m-0'>My Profile</h2>
+<div class='card' style='max-width:860px; margin:0 auto 14px;'>
+  <h2 style='margin:0;'>${user.role === 'patient' ? 'Patient Profile' : 'Doctor Profile'}</h2>
+  <div class='row' style='margin-top:8px;'>
+    <div class='badge'>Profile Details</div>
+    <div class='badge'>Security</div>
+    <div class='badge'>Health Info</div>
+  </div>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
 
-  <form method='post' action='/users/me' class='mt-4'>
+  <form method='post' action='/users/me' style='margin-top:10px;'>
     <div class='row'>
       <div><label>Full name</label><input name='fullName' value='${user.fullName || ''}' required /></div>
       <div><label>Phone</label><input name='phone' value='${user.phone || ''}' /></div>
@@ -27,8 +31,8 @@
     ` : ''}
 
     ${user.role === 'doctor' ? `
-      <div class='card !bg-slate-50'>
-        <h3 class='text-lg font-semibold m-0 mb-2'>Doctor profile</h3>
+      <div class='card' style='background:#faf8fc;'>
+        <h3 style='margin:0 0 8px;'>Doctor profile</h3>
         <div class='row'>
           <div><label>Specialization</label><input name='specialization' value='${(user.doctorProfile && user.doctorProfile.specialization) || ''}' /></div>
           <div><label>Years of experience</label><input name='yearsOfExperience' type='number' min='0' value='${(user.doctorProfile && (user.doctorProfile.yearsOfExperience ?? '')) || ''}' /></div>
@@ -36,15 +40,15 @@
           <div><label>Clinic</label><input name='clinicName' value='${(user.doctorProfile && user.doctorProfile.clinicName) || ''}' /></div>
           <div><label>Consultation languages</label><input name='consultationLanguages' value='${(user.doctorProfile && user.doctorProfile.consultationLanguages) || ''}' /></div>
         </div>
-        <div class='mt-3'>
+        <div style='margin-top:10px;'>
           <label>Description</label>
           <textarea name='description' rows='2'>${(user.doctorProfile && user.doctorProfile.description) || ''}</textarea>
         </div>
       </div>
     ` : ''}
 
-    <div class='mt-4'>
-      <button type='submit'>Save</button>
+    <div style='margin-top:14px;'>
+      <button type='submit' style='width:100%;'>Save</button>
     </div>
   </form>
 </div>

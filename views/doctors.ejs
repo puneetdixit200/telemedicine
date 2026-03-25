@@ -1,37 +1,49 @@
 <%- include('partials/layout', { title: 'Doctors', user, body: `
 <div class='card'>
-  <div class='flex items-center justify-between gap-3 flex-wrap'>
-    <h2 class='text-3xl font-semibold m-0'>Find Doctors</h2>
-    <span class='badge'>${doctors.length} results</span>
-  </div>
-  <form method='get' action='/doctors' class='row'>
-    <div><label>Specialization</label><input name='specialization' value='${(typeof specialization !== 'undefined' ? specialization : '')}' /></div>
-    <div><label>Language</label><input name='language' value='${(typeof language !== 'undefined' ? language : '')}' /></div>
-    <div>
-      <label>Online</label>
-      <select name='online'>
+  <div class='row' style='align-items:end;'>
+    <div style='flex: 1 1 640px;'>
+      <label>Search doctors by specialty or language</label>
+      <input name='specialization' form='doctorsFilterForm' placeholder='Search doctors by name, specialty, or location' value='${(typeof specialization !== 'undefined' ? specialization : '')}' />
+    </div>
+    <div style='flex: 1 1 220px;'>
+      <label>Language</label>
+      <input name='language' form='doctorsFilterForm' value='${(typeof language !== 'undefined' ? language : '')}' />
+    </div>
+    <div style='flex: 1 1 180px;'>
+      <label>Availability</label>
+      <select name='online' form='doctorsFilterForm'>
         <option value='all' ${(online || 'all') === 'all' ? 'selected' : ''}>All</option>
         <option value='online' ${(online || 'all') === 'online' ? 'selected' : ''}>Online only</option>
         <option value='offline' ${(online || 'all') === 'offline' ? 'selected' : ''}>Offline only</option>
       </select>
     </div>
-    <div style='align-self:end;'><button type='submit'>Filter</button></div>
-  </form>
-</div>
-
-${doctors.map(d => `
-  <div class='card'>
-    <div class='row'>
-      <div>
-        <h3 class='m-0 text-xl font-semibold'>${d.fullName}</h3>
-        <div class='badge'>${(d.doctorProfile && d.doctorProfile.specialization) || 'Doctor'}</div>
-        <div class='badge'>${d.online ? 'online' : 'offline'}</div>
-        <p class='text-slate-600'>${(d.doctorProfile && d.doctorProfile.description) || ''}</p>
-      </div>
-      <div style='align-self:center;'>
-        <a class='inline-flex items-center rounded-lg border border-sky-300 px-3 py-2 text-sky-700 hover:bg-sky-50' href='/doctors/${d.id}'>View profile & slots</a>
-      </div>
+    <div style='flex: 0 0 170px;'>
+      <button form='doctorsFilterForm' type='submit' class='btn-secondary' style='width:100%;'>Advanced Filters</button>
     </div>
   </div>
-`).join('')}
+  <form id='doctorsFilterForm' method='get' action='/doctors'></form>
+</div>
+
+<div class='doctor-grid'>
+  ${doctors.map(d => `
+    <div class='doctor-card'>
+      <div class='doctor-head'>
+        <img class='doctor-avatar' src='/public/img/doctor-generic.svg' alt='Doctor' />
+        <div>
+          <div class='doctor-name'>Dr. ${d.fullName}</div>
+          <div class='doctor-speciality'>${(d.doctorProfile && d.doctorProfile.specialization) || 'General Physician'}</div>
+          <div>Availability <span style='color:${d.online ? '#166534' : '#b91c1c'};'>${d.online ? 'online' : 'offline'}</span></div>
+          <div style='margin-top:4px; display:flex; gap:6px; flex-wrap:wrap;'>
+            <span class='badge'>English</span>
+            <span class='badge'>Hindi</span>
+            <span class='badge'>Video Consult</span>
+          </div>
+        </div>
+      </div>
+      <div class='row' style='margin-top:6px;'>
+        <a href='/doctors/${d.id}' class='btn-primary' style='width:100%;'>Book Appointment</a>
+      </div>
+    </div>
+  `).join('')}
+</div>
 ` }) %>

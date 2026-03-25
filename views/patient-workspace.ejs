@@ -1,16 +1,37 @@
 <%- include('partials/layout', { title: 'Patient Workspace', user, body: `
 <div class='card'>
-  <h2 class='text-3xl font-semibold m-0'>Patient Workspace</h2>
+  <div class='row' style='align-items:center;'>
+    <div style='flex:0 0 120px;'>
+      <img class='doctor-avatar' src='https://i.pravatar.cc/220?u=${user.id}' alt='Patient' />
+    </div>
+    <div>
+      <h2 style='margin:0;'>Patient Profile</h2>
+      <div class='badge'>Personal + Family Workspace</div>
+    </div>
+  </div>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
-  <p class='text-slate-600'>This page keeps personal and family records separated under the same login.</p>
+  <p style='color:#4b5563;'>This page keeps personal and family records separated under the same login.</p>
 </div>
 
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Main Patient Medical Data</h3>
-  <p><b>Chronic conditions:</b> ${(user.patientProfile && user.patientProfile.chronicConditions) || 'N/A'}</p>
-  <p><b>Basic health info:</b> ${(user.patientProfile && user.patientProfile.basicHealthInfo) || 'N/A'}</p>
-  <p><a href='/patients/me'>Edit main profile health data</a></p>
+  <div class='row'>
+    <div>
+      <h3 style='margin:0 0 8px;'>Personal Details</h3>
+      <p><b>Full Name:</b> ${user.fullName || 'N/A'}</p>
+      <p><b>Email:</b> ${user.email || 'N/A'}</p>
+      <p><b>Phone:</b> ${user.phone || 'N/A'}</p>
+      <p><b>Gender:</b> ${user.gender || 'N/A'}</p>
+      <p><b>Address:</b> ${user.address || 'N/A'}</p>
+      <p><a href='/users/me'>Edit personal details</a></p>
+    </div>
+    <div>
+      <h3 style='margin:0 0 8px;'>Medical History</h3>
+      <p><b>Chronic conditions:</b> ${(user.patientProfile && user.patientProfile.chronicConditions) || 'N/A'}</p>
+      <p><b>Basic health info:</b> ${(user.patientProfile && user.patientProfile.basicHealthInfo) || 'N/A'}</p>
+      <p><a href='/patients/me'>Edit main profile health data</a></p>
+    </div>
+  </div>
 </div>
 
 <div class='card'>
@@ -65,15 +86,17 @@
 <div class='card'>
   <h3 class='text-xl font-semibold m-0 mb-2'>Prescriptions & Completed Consultations</h3>
   ${completedAppointments.length === 0 ? '<p>No completed consultations yet.</p>' : ''}
-  ${completedAppointments.map(a => `
-    <div class='card !bg-white/70'>
-      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
-      <div><b>Doctor:</b> ${a.doctor.fullName}</div>
-      <div><b>For:</b> ${a.familyMember ? a.familyMember.fullName : user.fullName}</div>
-      <div><b>Diagnosis:</b> ${a.prescription ? a.prescription.diagnosis : 'No prescription'}</div>
-      ${a.prescription ? `<div><a href='/prescriptions/${a.id}/pdf'>Download PDF</a></div>` : ''}
-    </div>
-  `).join('')}
+  <div class='timeline'>
+    ${completedAppointments.map(a => `
+      <div class='timeline-item'>
+        <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
+        <div><b>Doctor:</b> ${a.doctor.fullName}</div>
+        <div><b>For:</b> ${a.familyMember ? a.familyMember.fullName : user.fullName}</div>
+        <div><b>Diagnosis:</b> ${a.prescription ? a.prescription.diagnosis : 'No prescription'}</div>
+        ${a.prescription ? `<div><a href='/prescriptions/${a.id}/pdf'>Download PDF</a></div>` : ''}
+      </div>
+    `).join('')}
+  </div>
 </div>
 <script src='/public/js/patient-workspace-upload.js'></script>
 ` }) %>

@@ -1,6 +1,6 @@
 <%- include('partials/layout', { title: 'Appointment', user, body: `
 <div class='card'>
-  <h2 class='text-3xl font-semibold m-0 mb-2'>Appointment</h2>
+  <h2 style='margin:0 0 8px;'>Appointment Details</h2>
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
   ${appointment.status !== 'booked' ? `<p class='badge'>Closed appointment: details are view-only for doctor and patient.</p>` : ''}
@@ -17,11 +17,11 @@
   <div class='row' style='align-items:center;'>
     <div>
       ${presence && presence.canStartCall
-        ? `<a id='joinCallLink' href='/calls/${appointment.id}'>Join Call (Video/Audio/Text)</a>`
+        ? `<a id='joinCallLink' class='btn-primary' href='/calls/${appointment.id}'>Join Call</a>`
         : `<span id='joinCallLink' class='badge'>Call locked: both users must be online</span>`}
     </div>
     <div>
-      <a href='/prescriptions/${appointment.id}'>Prescription</a>
+      <a href='/prescriptions/${appointment.id}' class='btn-primary'>Prescription</a>
     </div>
     <div>
       ${(appointment.status !== 'completed' && appointment.status !== 'cancelled') && ((user.role === 'doctor' && user.id === appointment.doctorId) || user.role === 'admin') ? `
@@ -41,32 +41,36 @@
 </div>
 
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Medical History</h3>
+  <h3 style='margin:0 0 8px;'>Medical History</h3>
   <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
   <p><b>Chronic conditions:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
   <p><b>Basic health info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
 
-  <h4>Previous completed consultations</h4>
+  <h4 style='margin:8px 0;'>Previous completed consultations</h4>
   ${history.historyAppointments.length === 0 ? '<p>No previous completed consultations found.</p>' : ''}
-  ${history.historyAppointments.map(a => `
-    <div class='card !bg-white/70'>
-      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
-      <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
-    </div>
-  `).join('')}
+  <div class='timeline'>
+    ${history.historyAppointments.map(a => `
+      <div class='timeline-item'>
+        <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
+        <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
+      </div>
+    `).join('')}
+  </div>
 </div>
 
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Pre-consultation</h3>
+  <h3 style='margin:0 0 8px;'>Pre-consultation</h3>
   ${user.role === 'patient' && appointment.status === 'booked' ? `
     <form method='post' action='/appointments/${appointment.id}/prep'>
-      <div style='margin-top:10px;'>
-        <label>Problem description</label>
-        <textarea name='problemDescription' rows='3'>${appointment.problemDescription || ''}</textarea>
-      </div>
-      <div style='margin-top:10px;'>
-        <label>Current / past medications</label>
-        <textarea name='medicationsText' rows='3'>${appointment.medicationsText || ''}</textarea>
+      <div class='row'>
+        <div>
+          <label>Problem description</label>
+          <textarea name='problemDescription' rows='3'>${appointment.problemDescription || ''}</textarea>
+        </div>
+        <div>
+          <label>Current / past medications</label>
+          <textarea name='medicationsText' rows='3'>${appointment.medicationsText || ''}</textarea>
+        </div>
       </div>
       <div style='margin-top:12px;'>
         <button type='submit'>Save</button>
