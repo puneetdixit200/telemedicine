@@ -29,18 +29,27 @@ function initSocket(httpServer) {
       if (!appointmentId) return;
       const appt = await prisma.appointment.findUnique({
         where: { id: appointmentId },
-        select: { id: true, doctorId: true, patientId: true, startAt: true }
+        select: { id: true, doctorId: true, patientId: true, startAt: true, status: true }
       });
       if (!appt) return;
       if (socket.user.id !== appt.doctorId && socket.user.id !== appt.patientId) return;
+      if (appt.status !== 'booked') return;
 
       const room = `appt:${appointmentId}`;
       socket.join(room);
       socket.to(room).emit('peer_joined', { userId: socket.user.id });
     });
 
-    socket.on('signal', ({ appointmentId, type, payload }) => {
+    socket.on('signal', async ({ appointmentId, type, payload }) => {
       if (!appointmentId || !type) return;
+      const appt = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { status: true, doctorId: true, patientId: true }
+      });
+      if (!appt) return;
+      if (socket.user.id !== appt.doctorId && socket.user.id !== appt.patientId) return;
+      if (appt.status !== 'booked') return;
+
       const room = `appt:${appointmentId}`;
       socket.to(room).emit('signal', {
         fromUserId: socket.user.id,
@@ -49,8 +58,16 @@ function initSocket(httpServer) {
       });
     });
 
-    socket.on('chat', ({ appointmentId, message }) => {
+    socket.on('chat', async ({ appointmentId, message }) => {
       if (!appointmentId || !message) return;
+      const appt = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { status: true, doctorId: true, patientId: true }
+      });
+      if (!appt) return;
+      if (socket.user.id !== appt.doctorId && socket.user.id !== appt.patientId) return;
+      if (appt.status !== 'booked') return;
+
       const room = `appt:${appointmentId}`;
       io.to(room).emit('chat', {
         fromUserId: socket.user.id,

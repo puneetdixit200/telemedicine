@@ -4,7 +4,8 @@ const { getAppointmentPresence } = require('../services/presence.service');
 
 const bookSchema = z.object({
   slotId: z.string().uuid(),
-  mode: z.enum(['video', 'audio', 'text']).default('video')
+  mode: z.enum(['video', 'audio', 'text']).default('video'),
+  familyMemberId: z.string().uuid().optional().or(z.literal(''))
 });
 
 const preconsultSchema = z.object({
@@ -18,6 +19,7 @@ async function ensureAppointmentAccess(appointmentId, user) {
     include: {
       doctor: { include: { doctorProfile: true } },
       patient: { include: { patientProfile: true } },
+      familyMember: true,
       documents: true,
       prescription: true
     }
@@ -26,6 +28,42 @@ async function ensureAppointmentAccess(appointmentId, user) {
   if (user.role === 'admin') return appt;
   if (user.id !== appt.patientId && user.id !== appt.doctorId) return null;
   return appt;
+}
+
+async function loadPatientHistory(appointment) {
+  const where = appointment.familyMemberId
+    ? { patientId: appointment.patientId, familyMemberId: appointment.familyMemberId, status: 'completed' }
+    : { patientId: appointment.patientId, familyMemberId: null, status: 'completed' };
+
+  const historyAppointments = await prisma.appointment.findMany({
+    where: {
+      ...where,
+      id: { not: appointment.id }
+    },
+    include: {
+      doctor: { select: { fullName: true } },
+      prescription: true
+    },
+    orderBy: { startAt: 'desc' },
+    take: 20
+  });
+
+  return {
+    currentPatientProfile: appointment.familyMember
+      ? {
+          name: appointment.familyMember.fullName,
+          chronicConditions: appointment.familyMember.chronicConditions,
+          basicHealthInfo: appointment.familyMember.basicHealthInfo,
+          relationToPatient: appointment.familyMember.relationToPatient
+        }
+      : {
+          name: appointment.patient.fullName,
+          chronicConditions: appointment.patient.patientProfile?.chronicConditions || null,
+          basicHealthInfo: appointment.patient.patientProfile?.basicHealthInfo || null,
+          relationToPatient: null
+        },
+    historyAppointments
+  };
 }
 
 const appointmentsController = {
@@ -43,6 +81,7 @@ const appointmentsController = {
         include: {
           doctor: { select: { id: true, fullName: true } },
           patient: { select: { id: true, fullName: true } },
+          familyMember: { select: { id: true, fullName: true } },
           prescription: { select: { id: true } }
         },
         orderBy: { startAt: 'asc' },
@@ -62,8 +101,16 @@ const appointmentsController = {
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
 
       const presence = getAppointmentPresence(appt);
+      const history = await loadPatientHistory(appt);
 
-      return res.render('appointment', { user: req.user, appointment: appt, presence, error: null, message: null });
+      return res.render('appointment', {
+        user: req.user,
+        appointment: appt,
+        presence,
+        history,
+        error: null,
+        message: null
+      });
     } catch (e) {
       return next(e);
     }
@@ -88,6 +135,16 @@ const appointmentsController = {
       if (!parsed.success) return res.status(400).render('dashboard', { user: req.user, message: 'Invalid booking request' });
 
       const { slotId, mode } = parsed.data;
+      const familyMemberId = parsed.data.familyMemberId || null;
+
+      if (familyMemberId) {
+        const member = await prisma.familyMember.findFirst({
+          where: { id: familyMemberId, ownerPatientId: req.user.id }
+        });
+        if (!member) {
+          return res.status(403).render('dashboard', { user: req.user, message: 'Invalid family member selection.' });
+        }
+      }
 
       const result = await prisma.$transaction(async (tx) => {
         const updated = await tx.slot.updateMany({
@@ -114,7 +171,8 @@ const appointmentsController = {
             startAt: slot.startAt,
             mode,
             status: 'booked',
-            slotId: slot.id
+            slotId: slot.id,
+            familyMemberId
           }
         });
 
@@ -141,10 +199,12 @@ const appointmentsController = {
       const parsed = preconsultSchema.safeParse(req.body);
       if (!parsed.success) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
+        const history = appt ? await loadPatientHistory(appt) : null;
         return res.status(400).render('appointment', {
           user: req.user,
           appointment: appt,
           presence: appt ? getAppointmentPresence(appt) : null,
+          history,
           error: 'Invalid input',
           message: null
         });
@@ -157,6 +217,7 @@ const appointmentsController = {
           user: req.user,
           appointment: appt,
           presence: getAppointmentPresence(appt),
+          history: await loadPatientHistory(appt),
           error: 'Only patient can update this.',
           message: null
         });
@@ -180,6 +241,7 @@ const appointmentsController = {
         user: req.user,
         appointment: updated,
         presence: getAppointmentPresence(updated),
+        history: await loadPatientHistory(updated),
         error: null,
         message: 'Saved.'
       });
@@ -194,7 +256,7 @@ const appointmentsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
 
-      if (req.user.role !== 'admin' && req.user.id !== appt.patientId && req.user.id !== appt.doctorId) {
+      if (req.user.role !== 'admin' && req.user.id !== appt.doctorId) {
         return res.status(403).render('dashboard', { user: req.user, message: 'Forbidden' });
       }
 

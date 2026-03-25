@@ -1,0 +1,61 @@
+<%- include('partials/layout', { title: 'Patient Workspace', user, body: `
+<div class='card'>
+  <h2>Patient Workspace</h2>
+  ${error ? `<p class='error'>${error}</p>` : ''}
+  ${message ? `<p class='success'>${message}</p>` : ''}
+  <p>This page keeps personal and family records separated under the same login.</p>
+</div>
+
+<div class='card'>
+  <h3>Main Patient Medical Data</h3>
+  <p><b>Chronic conditions:</b> ${(user.patientProfile && user.patientProfile.chronicConditions) || 'N/A'}</p>
+  <p><b>Basic health info:</b> ${(user.patientProfile && user.patientProfile.basicHealthInfo) || 'N/A'}</p>
+  <p><a href='/patients/me'>Edit main profile health data</a></p>
+</div>
+
+<div class='card'>
+  <h3>Add Family Member</h3>
+  <form method='post' action='/patients/family-members' class='row'>
+    <div><label>Full name</label><input name='fullName' required /></div>
+    <div><label>Relation</label><input name='relationToPatient' placeholder='Son / Mother / Spouse' /></div>
+    <div><label>Gender</label><input name='gender' /></div>
+    <div><label>Date of birth</label><input type='date' name='dateOfBirth' /></div>
+    <div style='flex: 1 1 100%;'><label>Chronic conditions</label><textarea name='chronicConditions' rows='2'></textarea></div>
+    <div style='flex: 1 1 100%;'><label>Basic health info</label><textarea name='basicHealthInfo' rows='2'></textarea></div>
+    <div style='align-self:end;'><button type='submit'>Save Family Member</button></div>
+  </form>
+</div>
+
+<div class='card'>
+  <h3>Family Members</h3>
+  ${user.familyMembers && user.familyMembers.length ? '' : '<p>No family members added yet.</p>'}
+  ${(user.familyMembers || []).map(m => `
+    <div class='card' style='background:#fafafa;'>
+      <form method='post' action='/patients/family-members/update' class='row'>
+        <input type='hidden' name='familyMemberId' value='${m.id}' />
+        <div><label>Full name</label><input name='fullName' value='${m.fullName || ''}' required /></div>
+        <div><label>Relation</label><input name='relationToPatient' value='${m.relationToPatient || ''}' /></div>
+        <div><label>Gender</label><input name='gender' value='${m.gender || ''}' /></div>
+        <div><label>Date of birth</label><input type='date' name='dateOfBirth' value='${m.dateOfBirth ? new Date(m.dateOfBirth).toISOString().slice(0,10) : ''}' /></div>
+        <div style='flex: 1 1 100%;'><label>Chronic conditions</label><textarea name='chronicConditions' rows='2'>${m.chronicConditions || ''}</textarea></div>
+        <div style='flex: 1 1 100%;'><label>Basic health info</label><textarea name='basicHealthInfo' rows='2'>${m.basicHealthInfo || ''}</textarea></div>
+        <div style='align-self:end;'><button type='submit'>Update</button></div>
+      </form>
+    </div>
+  `).join('')}
+</div>
+
+<div class='card'>
+  <h3>Prescriptions & Completed Consultations</h3>
+  ${completedAppointments.length === 0 ? '<p>No completed consultations yet.</p>' : ''}
+  ${completedAppointments.map(a => `
+    <div class='card' style='background:#fafafa;'>
+      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
+      <div><b>Doctor:</b> ${a.doctor.fullName}</div>
+      <div><b>For:</b> ${a.familyMember ? a.familyMember.fullName : user.fullName}</div>
+      <div><b>Diagnosis:</b> ${a.prescription ? a.prescription.diagnosis : 'No prescription'}</div>
+      ${a.prescription ? `<div><a href='/prescriptions/${a.id}/pdf'>Download PDF</a></div>` : ''}
+    </div>
+  `).join('')}
+</div>
+` }) %>

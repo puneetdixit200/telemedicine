@@ -20,6 +20,10 @@ function getUtcRangeForDate(dateStr) {
   return { start, end };
 }
 
+function startOfUtcDay(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+}
+
 const doctorsController = {
   listDoctors: async (req, res, next) => {
     try {
@@ -89,8 +93,16 @@ const doctorsController = {
         take: 48
       });
 
+      const familyMembers =
+        req.user.role === 'patient'
+          ? await prisma.familyMember.findMany({
+              where: { ownerPatientId: req.user.id },
+              orderBy: { fullName: 'asc' }
+            })
+          : [];
+
       const doctorOnline = Boolean(doctor.doctorProfile?.callEnabled) && isRecentlyOnline(doctor.lastSeenAt);
-      return res.render('doctor', { user: req.user, doctor, slots, doctorOnline });
+      return res.render('doctor', { user: req.user, doctor, slots, doctorOnline, familyMembers });
     } catch (e) {
       return next(e);
     }
@@ -114,6 +126,50 @@ const doctorsController = {
         error: null,
         message: null,
         callState: doctor?.doctorProfile?.callEnabled ? 'online' : 'offline'
+      });
+    } catch (e) {
+      return next(e);
+    }
+  },
+
+  viewAnalytics: async (req, res, next) => {
+    try {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      const start = startOfUtcDay(sevenDaysAgo);
+
+      const appts = await prisma.appointment.findMany({
+        where: {
+          doctorId: req.user.id,
+          startAt: { gte: start }
+        },
+        select: { startAt: true, status: true }
+      });
+
+      const statusCounts = { booked: 0, completed: 0, cancelled: 0, no_show: 0 };
+      const byDay = {};
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+        byDay[d.toISOString().slice(0, 10)] = 0;
+      }
+
+      appts.forEach((a) => {
+        statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
+        const key = new Date(a.startAt).toISOString().slice(0, 10);
+        if (Object.prototype.hasOwnProperty.call(byDay, key)) byDay[key] += 1;
+      });
+
+      const maxDaily = Math.max(1, ...Object.values(byDay));
+      const dailySeries = Object.entries(byDay).map(([day, count]) => ({
+        day,
+        count,
+        widthPct: Math.round((count / maxDaily) * 100)
+      }));
+
+      return res.render('doctor-analytics', {
+        user: req.user,
+        statusCounts,
+        dailySeries
       });
     } catch (e) {
       return next(e);

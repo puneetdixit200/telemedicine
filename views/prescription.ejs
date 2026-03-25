@@ -5,7 +5,11 @@
   ${message ? `<p class='success'>${message}</p>` : ''}
 
   <p><b>Appointment:</b> ${appointment.id}</p>
-  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.patient.fullName}</p>
+  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}</p>
+  <div class='row' style='align-items:center;'>
+    <div style='flex:0 0 auto;'><button id='btnBackNav' class='secondary' type='button'>Back</button></div>
+    <div style='flex:0 0 auto;'><button id='btnForwardNav' class='secondary' type='button'>Forward</button></div>
+  </div>
 
   ${appointment.prescription ? `
     <div class='card' style='background:#fafafa;'>
@@ -38,8 +42,21 @@
           <input name='diagnosis' value='${appointment.prescription ? appointment.prescription.diagnosis : ''}' required />
         </div>
         <div style='margin-top:10px;'>
-          <label>Medications (one per line: name, dosage, frequency, duration)</label>
-          <textarea name='itemsText' rows='4' required>${appointment.prescription ? (Array.isArray(appointment.prescription.items) ? appointment.prescription.items.map(i => `${i.name||''}, ${i.dosage||''}, ${i.frequency||''}, ${i.duration||''}`).join('\n') : '') : ''}</textarea>
+          <label>Medications</label>
+          <div id='medicationRows'>
+            ${(appointment.prescription && Array.isArray(appointment.prescription.items) && appointment.prescription.items.length
+              ? appointment.prescription.items
+              : [{ name: '', dosage: '', frequency: '', duration: '' }]
+            ).map((i) => `
+              <div class='med-form-row'>
+                <input name='medicationName' placeholder='Medicine name' value='${i.name || ''}' required />
+                <input name='dosage' placeholder='Dosage' value='${i.dosage || ''}' />
+                <input name='frequency' placeholder='Frequency' value='${i.frequency || ''}' />
+                <input name='duration' placeholder='Duration' value='${i.duration || ''}' />
+              </div>
+            `).join('')}
+          </div>
+          <button id='btnAddMedication' class='secondary' type='button' style='margin-top:8px;'>Add medicine</button>
         </div>
         <div style='margin-top:10px;'>
           <label>Instructions</label>
@@ -60,4 +77,5 @@
     </div>
   ` : ''}
 </div>
+<script src='/public/js/prescription.js'></script>
 ` }) %>

@@ -3,7 +3,7 @@
   <h2>Consultation</h2>
   <p><b>Appointment:</b> ${appointment.id}</p>
   <p><b>Mode:</b> <span class='badge'>${appointment.mode}</span></p>
-  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.patient.fullName}</p>
+  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}</p>
 
   <div class='row'>
     <div>
@@ -20,7 +20,30 @@
         <button class='secondary' type='submit'>End session</button>
       </form>
     </div>
+    ${(user.role === 'doctor' && user.id === appointment.doctorId) || user.role === 'admin' ? `
+      <div>
+        <form method='post' action='/appointments/${appointment.id}/end' style='margin:0;'>
+          <button type='submit'>Close Appointment</button>
+        </form>
+      </div>
+    ` : ''}
   </div>
+</div>
+
+<div class='card'>
+  <h3>Patient Medical Context</h3>
+  <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
+  <p><b>Chronic conditions:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
+  <p><b>Basic health info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
+
+  <h4>Previous prescriptions</h4>
+  ${history.historyAppointments.length === 0 ? '<p>No previous completed consultations found.</p>' : ''}
+  ${history.historyAppointments.map(a => `
+    <div class='card' style='background:#fafafa;'>
+      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
+      <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
+    </div>
+  `).join('')}
 </div>
 
 <div class='card'>

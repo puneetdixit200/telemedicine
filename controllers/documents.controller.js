@@ -5,7 +5,7 @@ const { uploadBuffer, getReadSasUrl } = require('../services/storage.service');
 async function ensureAppointmentAccess(appointmentId, user) {
   const appt = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    select: { id: true, doctorId: true, patientId: true }
+    select: { id: true, doctorId: true, patientId: true, familyMemberId: true }
   });
   if (!appt) return null;
   if (user.role === 'admin') return appt;
@@ -20,9 +20,22 @@ const documentsController = {
       if (req.user.role !== 'patient') return res.status(403).json({ error: 'Only patients can upload documents' });
 
       const appointmentId = req.body.appointmentId || null;
+      const uploadFor = req.body.uploadFor || '';
       if (appointmentId) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
         if (!appt || appt.patientId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        if (!['user', 'family_member'].includes(uploadFor)) {
+          return res.status(400).json({ error: 'Please choose whether file is for user or family member.' });
+        }
+
+        if (appt.familyMemberId && uploadFor !== 'family_member') {
+          return res.status(400).json({ error: 'This appointment is for a family member. Choose family member.' });
+        }
+
+        if (!appt.familyMemberId && uploadFor !== 'user') {
+          return res.status(400).json({ error: 'This appointment is for main user. Choose user.' });
+        }
       }
 
       const safeName = (req.file.originalname || 'document')

@@ -6,6 +6,7 @@ function isRecentlyOnline(lastSeenAt) {
 }
 
 function getAppointmentPresence(appointment) {
+  const isOpen = appointment.status === 'booked';
   const doctorHeartbeatOnline = isRecentlyOnline(appointment.doctor?.lastSeenAt);
   const patientHeartbeatOnline = isRecentlyOnline(appointment.patient?.lastSeenAt);
 
@@ -14,10 +15,11 @@ function getAppointmentPresence(appointment) {
   const patientOnline = patientHeartbeatOnline;
 
   return {
+    isOpen,
     doctorOnline,
     patientOnline,
     doctorAcceptingCalls,
-    canStartCall: doctorOnline && patientOnline
+    canStartCall: isOpen && doctorOnline && patientOnline
   };
 }
 

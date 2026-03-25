@@ -7,7 +7,8 @@ async function ensureAppointmentAccess(appointmentId, user) {
     where: { id: appointmentId },
     include: {
       doctor: { include: { doctorProfile: true } },
-      patient: { select: { id: true, fullName: true, lastSeenAt: true } }
+      patient: { include: { patientProfile: true } },
+      familyMember: true
     }
   });
   if (!appt) return null;
@@ -16,12 +17,54 @@ async function ensureAppointmentAccess(appointmentId, user) {
   return appt;
 }
 
+async function loadPatientHistory(appointment) {
+  const where = appointment.familyMemberId
+    ? { patientId: appointment.patientId, familyMemberId: appointment.familyMemberId, status: 'completed' }
+    : { patientId: appointment.patientId, familyMemberId: null, status: 'completed' };
+
+  const historyAppointments = await prisma.appointment.findMany({
+    where: {
+      ...where,
+      id: { not: appointment.id }
+    },
+    include: {
+      doctor: { select: { fullName: true } },
+      prescription: true
+    },
+    orderBy: { startAt: 'desc' },
+    take: 15
+  });
+
+  return {
+    currentPatientProfile: appointment.familyMember
+      ? {
+          name: appointment.familyMember.fullName,
+          chronicConditions: appointment.familyMember.chronicConditions,
+          basicHealthInfo: appointment.familyMember.basicHealthInfo,
+          relationToPatient: appointment.familyMember.relationToPatient
+        }
+      : {
+          name: appointment.patient.fullName,
+          chronicConditions: appointment.patient.patientProfile?.chronicConditions || null,
+          basicHealthInfo: appointment.patient.patientProfile?.basicHealthInfo || null,
+          relationToPatient: null
+        },
+    historyAppointments
+  };
+}
+
 const callsController = {
   viewCall: async (req, res, next) => {
     try {
       const appointmentId = req.params.appointmentId;
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
+      if (appt.status !== 'booked') {
+        return res.status(403).render('dashboard', {
+          user: req.user,
+          message: 'This appointment is closed. Call is not allowed.'
+        });
+      }
 
       const presence = getAppointmentPresence(appt);
       if (!presence.canStartCall) {
@@ -33,9 +76,11 @@ const callsController = {
 
       await prisma.callSession.upsert({
         where: { appointmentId },
-        update: {},
-        create: { appointmentId, status: 'ready' }
+        update: { status: 'in_progress', startedAt: new Date(), endedAt: null },
+        create: { appointmentId, status: 'in_progress', startedAt: new Date() }
       });
+
+      const history = await loadPatientHistory(appt);
 
       // Short-lived token for Socket.IO auth (cookie is HttpOnly).
       const socketToken = jwt.sign({ sub: req.user.id, role: req.user.role }, process.env.JWT_SECRET, {
@@ -53,6 +98,7 @@ const callsController = {
       return res.render('call', {
         user: req.user,
         appointment: appt,
+        history,
         socketToken,
         iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
         callConfigJson,

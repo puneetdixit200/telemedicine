@@ -60,6 +60,7 @@ model User {
 
   patientProfile PatientProfile?
   doctorProfile  DoctorProfile?
+  familyMembers  FamilyMember[]
 
   asPatientAppointments Appointment[] @relation("appointments_as_patient")
   asDoctorAppointments  Appointment[] @relation("appointments_as_doctor")
@@ -114,8 +115,10 @@ model Appointment {
 
   patientId   String
   doctorId    String
+  familyMemberId String?
   patient     User              @relation("appointments_as_patient", fields: [patientId], references: [id], onDelete: Cascade)
   doctor      User              @relation("appointments_as_doctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember?    @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   startAt     DateTime
   status      AppointmentStatus @default(booked)
@@ -133,6 +136,27 @@ model Appointment {
 
   @@index([doctorId, startAt])
   @@index([patientId, startAt])
+  @@index([familyMemberId])
+}
+
+model FamilyMember {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ownerPatientId    String
+  ownerPatient      User     @relation(fields: [ownerPatientId], references: [id], onDelete: Cascade)
+
+  fullName          String
+  relationToPatient String?
+  gender            String?
+  dateOfBirth       DateTime?
+  chronicConditions String?
+  basicHealthInfo   String?
+
+  appointments      Appointment[]
+
+  @@index([ownerPatientId, fullName])
 }
 
 model CallSession {

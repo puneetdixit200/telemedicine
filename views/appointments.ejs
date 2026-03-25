@@ -13,6 +13,9 @@
           <div>
             ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
           </div>
+          <div>
+            <span class='badge'>For: ${a.familyMember ? a.familyMember.fullName : a.patient.fullName}</span>
+          </div>
         </div>
         <div style='align-self:center;'>
           <a href='/appointments/${a.id}'>Open</a>

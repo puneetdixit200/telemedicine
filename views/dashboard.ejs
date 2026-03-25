@@ -6,6 +6,8 @@
     <p>Welcome, <b>${user.fullName}</b> (${user.role}).</p>
     <p><a href='/users/me'>View / edit your profile</a></p>
     ${user.role === 'doctor' ? `<p><a href='/doctors/me/slots'>Manage your slots</a></p>` : ''}
+    ${user.role === 'doctor' ? `<p><a href='/doctors/me/analytics'>Doctor analytics dashboard</a></p>` : ''}
+    ${user.role === 'patient' ? `<p><a href='/patients/workspace'>Patient workspace (family + history)</a></p>` : ''}
   `}
 </div>
 ` }) %>

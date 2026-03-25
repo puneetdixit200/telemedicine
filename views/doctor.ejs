@@ -24,6 +24,11 @@
               <option value='audio'>Audio</option>
               <option value='text'>Text</option>
             </select>
+            <label style='margin-top:6px;'>For</label>
+            <select name='familyMemberId'>
+              <option value=''>Self (${user.fullName})</option>
+              ${(familyMembers || []).map(m => `<option value='${m.id}'>${m.fullName}${m.relationToPatient ? ` (${m.relationToPatient})` : ''}</option>`).join('')}
+            </select>
             <button type='submit' style='margin-top:6px;'>Book</button>
           </form>
         ` : ''}
