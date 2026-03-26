@@ -28,6 +28,23 @@ let localStream;
 let currentMode = cfg.defaultMode;
 let isMuted = false;
 let isCameraOff = false;
+let makingOffer = false;
+let ignoreOffer = false;
+let isSettingRemoteAnswerPending = false;
+const pendingIceCandidates = [];
+
+// Doctor acts as the stable offerer by default; patient is the polite peer.
+const isPolitePeer = cfg.userRole === 'patient';
+
+function logRtc(event, details = {}) {
+  console.log('[CALL][RTC]', event, {
+    appointmentId: cfg.appointmentId,
+    mode: currentMode,
+    signalingState: pc ? pc.signalingState : 'no-pc',
+    connectionState: pc ? pc.connectionState : 'no-pc',
+    ...details
+  });
+}
 
 function setStatus(s) {
   statusEl.textContent = s;
@@ -56,6 +73,7 @@ function ensureSocket() {
   socket.on('peer_joined', async () => {
     // If we already have local media and a PC, try offering again.
     if (pc && (currentMode === 'video' || currentMode === 'audio')) {
+      logRtc('peer_joined');
       await maybeMakeOffer();
     }
   });
@@ -65,17 +83,68 @@ function ensureSocket() {
       if (!pc) await setupPeerConnection();
 
       if (type === 'offer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(payload));
+        const offerCollision = makingOffer || pc.signalingState !== 'stable';
+        ignoreOffer = !isPolitePeer && offerCollision;
+
+        if (ignoreOffer) {
+          logRtc('ignore_offer_collision', { isPolitePeer, offerCollision });
+          return;
+        }
+
+        if (offerCollision && isPolitePeer) {
+          logRtc('rollback_for_offer_collision', { isPolitePeer, offerCollision });
+          await Promise.all([
+            pc.setLocalDescription({ type: 'rollback' }),
+            pc.setRemoteDescription(new RTCSessionDescription(payload))
+          ]);
+        } else {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload));
+        }
+
+        while (pendingIceCandidates.length) {
+          const candidate = pendingIceCandidates.shift();
+          if (!candidate) continue;
+          await pc.addIceCandidate(candidate);
+        }
+
+        logRtc('remote_offer_applied');
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('signal', { appointmentId: cfg.appointmentId, type: 'answer', payload: pc.localDescription });
       } else if (type === 'answer') {
+        if (pc.signalingState !== 'have-local-offer') {
+          logRtc('ignore_unexpected_answer', { receivedType: type });
+          return;
+        }
+
+        isSettingRemoteAnswerPending = true;
         await pc.setRemoteDescription(new RTCSessionDescription(payload));
+        isSettingRemoteAnswerPending = false;
+
+        while (pendingIceCandidates.length) {
+          const candidate = pendingIceCandidates.shift();
+          if (!candidate) continue;
+          await pc.addIceCandidate(candidate);
+        }
+
+        logRtc('remote_answer_applied');
       } else if (type === 'ice_candidate') {
-        if (payload) await pc.addIceCandidate(payload);
+        if (!payload) return;
+        const candidate = new RTCIceCandidate(payload);
+        if (pc.remoteDescription) {
+          await pc.addIceCandidate(candidate);
+        } else {
+          pendingIceCandidates.push(candidate);
+          logRtc('queue_remote_ice', { queued: pendingIceCandidates.length });
+        }
       }
     } catch (e) {
-      console.error(e);
+      isSettingRemoteAnswerPending = false;
+      console.error('[CALL][RTC] signal handling error', e, {
+        type,
+        signalingState: pc ? pc.signalingState : 'no-pc',
+        connectionState: pc ? pc.connectionState : 'no-pc'
+      });
       setStatus('signal_error');
     }
   });
@@ -106,19 +175,31 @@ async function setupPeerConnection() {
   if (pc) return pc;
 
   pc = new RTCPeerConnection({ iceServers: cfg.iceServers });
+  logRtc('pc_created', { isPolitePeer, iceServers: cfg.iceServers });
 
   pc.onicecandidate = (event) => {
     if (event.candidate) {
+      logRtc('local_ice_candidate');
       ensureSocket().emit('signal', { appointmentId: cfg.appointmentId, type: 'ice_candidate', payload: event.candidate });
     }
   };
 
   pc.ontrack = (event) => {
+    logRtc('remote_track_received', { streams: event.streams ? event.streams.length : 0 });
     remoteVideo.srcObject = event.streams[0];
   };
 
   pc.onconnectionstatechange = () => {
+    logRtc('connection_state_change');
     setStatus(`pc:${pc.connectionState}`);
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    logRtc('ice_connection_state_change', { iceConnectionState: pc.iceConnectionState });
+  };
+
+  pc.onsignalingstatechange = () => {
+    logRtc('signaling_state_change', { signalingState: pc.signalingState, isSettingRemoteAnswerPending });
   };
 
   if (localStream) {
@@ -132,10 +213,22 @@ async function setupPeerConnection() {
 
 async function maybeMakeOffer() {
   if (!pc) return;
-  if (pc.signalingState !== 'stable') return;
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  ensureSocket().emit('signal', { appointmentId: cfg.appointmentId, type: 'offer', payload: pc.localDescription });
+  if (pc.signalingState !== 'stable') {
+    logRtc('skip_offer_non_stable');
+    return;
+  }
+
+  try {
+    makingOffer = true;
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    logRtc('local_offer_created');
+    ensureSocket().emit('signal', { appointmentId: cfg.appointmentId, type: 'offer', payload: pc.localDescription });
+  } catch (e) {
+    console.error('[CALL][RTC] offer creation failed', e);
+  } finally {
+    makingOffer = false;
+  }
 }
 
 async function startMode(mode) {

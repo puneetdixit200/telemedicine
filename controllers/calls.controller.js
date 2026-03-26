@@ -90,6 +90,7 @@ const callsController = {
       const callConfigJson = JSON.stringify({
         appointmentId: appt.id,
         socketToken,
+        userRole: req.user.role,
         iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
         defaultMode: appt.mode
       });
