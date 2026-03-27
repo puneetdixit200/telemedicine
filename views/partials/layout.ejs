@@ -7,15 +7,16 @@
   <link rel="stylesheet" href="/public/css/tailwind.css" />
   <link rel="stylesheet" href="/public/css/styles.css" />
 </head>
-<body data-authenticated="<%= user ? 'true' : 'false' %>">
+<body data-authenticated="<%= user ? 'true' : 'false' %>" data-role="<%= user ? user.role : 'guest' %>">
+  <div class="app-shell">
   <div class="container">
-    <div class="nav">
+    <div class="nav app-nav">
       <% if (user) { %>
-        <a href="/dashboard">Dashboard</a>
+        <a class="nav-link" href="/dashboard">Dashboard</a>
         <% if (user.role !== 'doctor') { %>
-          <a href="/doctors">Doctors</a>
+          <a class="nav-link" href="/doctors">Doctors</a>
         <% } %>
-        <a href="/appointments">Appointments</a>
+        <a class="nav-link" href="/appointments">Appointments</a>
       <% } %>
       <div class="spacer"></div>
       <select id="languageSelector" aria-label="Language selector">
@@ -33,15 +34,15 @@
       </select>
       <div id="google_translate_element" class="translate-hidden" aria-hidden="true"></div>
       <% if (user) { %>
-        <span id="selfPresenceBadge" class="badge"><%= user.isCallOnline ? 'online' : 'offline' %></span>
-        <span class="badge"><%= user.role %></span>
-        <span><%= user.fullName %></span>
+        <span id="selfPresenceBadge" class="badge presence-badge <%= user.isCallOnline ? 'presence-online' : 'presence-offline' %>"><%= user.isCallOnline ? 'online' : 'offline' %></span>
+        <span class="badge role-badge role-<%= user.role %>"><%= user.role %></span>
+        <span class="nav-user-name"><%= user.fullName %></span>
         <form method="post" action="/auth/logout" style="margin:0;">
-          <button class="secondary" type="submit">Logout</button>
+          <button class="secondary logout-btn" type="submit">Logout</button>
         </form>
       <% } else { %>
-        <a href="/auth/login">Login</a>
-        <a href="/auth/register">Register</a>
+        <a class="nav-link" href="/auth/login">Login</a>
+        <a class="nav-link" href="/auth/register">Register</a>
       <% } %>
     </div>
 
@@ -50,5 +51,6 @@
 
   <script src="/public/js/presence-ping.js"></script>
   <script src="/public/js/translation.js"></script>
+  </div>
 </body>
 </html>

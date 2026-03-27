@@ -1,26 +1,26 @@
 <%- include('partials/layout', { title: 'Appointments', user, body: `
 <div class='card'>
-  <div class='flex items-center justify-between gap-3 mb-2'>
-    <h2 class='m-0 text-2xl font-semibold text-slate-800'>Upcoming Appointments</h2>
+  <div class='hero-header'>
+    <h2 class='page-title' style='font-size:1.6rem;'>Upcoming Appointments</h2>
     <span class='badge'>${upcomingAppointments.length} total</span>
   </div>
   ${upcomingAppointments.length === 0 ? '<p>No upcoming appointments.</p>' : ''}
 
   ${upcomingAppointments.map(a => `
-    <div class='card !bg-white !m-0 mb-3'>
+    <div class='card' style='margin-bottom:10px;'>
       <div class='row' style='align-items:center;'>
         <div>
-          <div class='text-base font-semibold text-slate-800'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
-          <div class='mt-1'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
-          <div class='mt-2 text-slate-700'>
+          <div style='font-size:1.02rem; font-weight:700;'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
+          <div style='margin-top:5px;'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
+          <div style='margin-top:7px;'>
             ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
           </div>
-          <div class='mt-1'>
+          <div style='margin-top:5px;'>
             <span class='badge'>For: ${a.familyMember ? a.familyMember.fullName : a.patient.fullName}</span>
           </div>
         </div>
         <div style='align-self:center;'>
-          <a class='inline-flex items-center rounded-lg border border-sky-300 px-3 py-2 text-sky-700 hover:bg-sky-50' href='/appointments/${a.id}'>Open details</a>
+          <a class='btn-secondary' href='/appointments/${a.id}'>Open details</a>
         </div>
       </div>
     </div>
@@ -28,27 +28,27 @@
 </div>
 
 <div class='card'>
-  <div class='flex items-center justify-between gap-3 mb-2'>
-    <h2 class='m-0 text-2xl font-semibold text-slate-800'>Done Appointments</h2>
+  <div class='hero-header'>
+    <h2 class='page-title' style='font-size:1.6rem;'>Done Appointments</h2>
     <span class='badge'>${doneAppointments.length} total</span>
   </div>
   ${doneAppointments.length === 0 ? '<p>No completed/cancelled appointments yet.</p>' : ''}
 
   ${doneAppointments.map(a => `
-    <div class='card !bg-white !m-0 mb-3'>
+    <div class='card' style='margin-bottom:10px;'>
       <div class='row' style='align-items:center;'>
         <div>
-          <div class='text-base font-semibold text-slate-800'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
-          <div class='mt-1'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
-          <div class='mt-2 text-slate-700'>
+          <div style='font-size:1.02rem; font-weight:700;'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
+          <div style='margin-top:5px;'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
+          <div style='margin-top:7px;'>
             ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
           </div>
-          <div class='mt-1'>
+          <div style='margin-top:5px;'>
             <span class='badge'>For: ${a.familyMember ? a.familyMember.fullName : a.patient.fullName}</span>
           </div>
         </div>
         <div style='align-self:center;'>
-          <a class='inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-slate-700 hover:bg-slate-50' href='/appointments/${a.id}'>Open details</a>
+          <a class='btn-secondary' href='/appointments/${a.id}'>Open details</a>
         </div>
       </div>
     </div>

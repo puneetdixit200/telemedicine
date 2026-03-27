@@ -1,6 +1,9 @@
 <%- include('partials/layout', { title: 'My Profile', user, body: `
 <div class='card' style='max-width:860px; margin:0 auto 14px;'>
-  <h2 style='margin:0;'>${user.role === 'patient' ? 'Patient Profile' : 'Doctor Profile'}</h2>
+  <div class='hero-header'>
+    <h2 class='page-title'>${user.role === 'patient' ? 'Patient Profile' : user.role === 'doctor' ? 'Doctor Profile' : 'Admin Profile'}</h2>
+    <span class='badge role-chip role-badge role-${user.role}'>${user.role}</span>
+  </div>
   <div class='row' style='margin-top:8px;'>
     <div class='badge'>Profile Details</div>
     <div class='badge'>Security</div>
