@@ -1,31 +1,127 @@
 <%- include('partials/layout', { title: 'Doctor Analytics', user, body: `
+
+<style>
+.card {
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:20px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+  border:1px solid #f1f1f1;
+}
+
+.row {
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.badge {
+  padding:4px 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#3730a3;
+  font-size:12px;
+}
+
+.stat-card {
+  flex:1 1 140px;
+  padding:14px;
+  border-radius:12px;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
+  text-align:center;
+}
+
+.stat-number {
+  font-size:1.6rem;
+  font-weight:700;
+  margin-top:6px;
+}
+
+.graph-row {
+  margin-bottom:12px;
+}
+
+.graph-label {
+  flex:0 0 140px;
+  font-weight:500;
+}
+
+.graph-container {
+  flex:1;
+  background:#e0f2fe;
+  border-radius:999px;
+  height:14px;
+  overflow:hidden;
+}
+
+.graph-bar {
+  height:100%;
+  background:linear-gradient(90deg,#0284c7,#06b6d4);
+  border-radius:999px;
+}
+
+.graph-count {
+  flex:0 0 40px;
+  text-align:right;
+  font-weight:600;
+}
+</style>
+
+<!-- Header -->
 <div class='card'>
   <h2 class='text-3xl font-semibold m-0'>Doctor Dashboard</h2>
-  <p class='text-slate-600'>Last 7 days activity.</p>
+  <p style="color:#6b7280;">Last 7 days activity</p>
 </div>
 
+<!-- Status -->
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Status Summary</h3>
+  <h3 class='text-xl font-semibold mb-3'>Status Summary</h3>
+
   <div class='row'>
-    <div class='card !m-0 !p-3'><span class='badge'>Booked</span> <b>${statusCounts.booked}</b></div>
-    <div class='card !m-0 !p-3'><span class='badge'>Completed</span> <b>${statusCounts.completed}</b></div>
-    <div class='card !m-0 !p-3'><span class='badge'>Cancelled</span> <b>${statusCounts.cancelled}</b></div>
-    <div class='card !m-0 !p-3'><span class='badge'>No-show</span> <b>${statusCounts.no_show}</b></div>
+    <div class='stat-card'>
+      <span class='badge'>Booked</span>
+      <div class='stat-number'>${statusCounts.booked}</div>
+    </div>
+
+    <div class='stat-card'>
+      <span class='badge'>Completed</span>
+      <div class='stat-number'>${statusCounts.completed}</div>
+    </div>
+
+    <div class='stat-card'>
+      <span class='badge'>Cancelled</span>
+      <div class='stat-number'>${statusCounts.cancelled}</div>
+    </div>
+
+    <div class='stat-card'>
+      <span class='badge'>No-show</span>
+      <div class='stat-number'>${statusCounts.no_show}</div>
+    </div>
   </div>
 </div>
 
+<!-- Graph -->
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Daily Appointments Graph</h3>
+  <h3 class='text-xl font-semibold mb-3'>Daily Appointments Graph</h3>
+
   ${dailySeries.map(d => `
-    <div style='margin-bottom:10px;'>
+    <div class='graph-row'>
       <div class='row' style='align-items:center;'>
-        <div style='flex: 0 0 140px;'>${d.day}</div>
-        <div style='flex: 1 1 auto; background:#e0f2fe; border-radius:999px; height:14px; overflow:hidden;'>
-          <div style='height:100%; width:${d.widthPct}%; background:linear-gradient(90deg, #0284c7, #06b6d4);'></div>
+
+        <div class='graph-label'>${d.day}</div>
+
+        <div class='graph-container'>
+          <div class='graph-bar' style='width:\${d.widthPct}%;'></div>
         </div>
-        <div style='flex: 0 0 40px; text-align:right;'>${d.count}</div>
+
+        <div class='graph-count'>${d.count}</div>
+
       </div>
     </div>
   `).join('')}
+
 </div>
+
 ` }) %>

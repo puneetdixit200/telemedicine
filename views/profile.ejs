@@ -1,18 +1,134 @@
 <%- include('partials/layout', { title: 'My Profile', user, body: `
+
+<style>
+.card {
+  background:#fff;
+  border-radius:18px;
+  padding:22px;
+  margin-bottom:18px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.06);
+  border:1px solid #f1f1f1;
+}
+
+.hero-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.page-title {
+  font-size:1.6rem;
+  font-weight:600;
+  margin:0;
+}
+
+/* Role badge */
+.role-badge {
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+  text-transform:capitalize;
+}
+.role-patient { background:#ecfeff; color:#0e7490; }
+.role-doctor { background:#eef2ff; color:#3730a3; }
+.role-admin { background:#fef3c7; color:#92400e; }
+
+/* Tabs */
+.badge {
+  padding:5px 12px;
+  border-radius:999px;
+  background:#f3f4f6;
+  font-size:12px;
+}
+
+/* Layout */
+.row {
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.row > div {
+  flex:1 1 220px;
+}
+
+/* Inputs */
+label {
+  font-size:12px;
+  color:#6b7280;
+  display:block;
+  margin-bottom:4px;
+}
+
+input, textarea {
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  transition:0.2s;
+}
+input:focus, textarea:focus {
+  border-color:#4f46e5;
+  outline:none;
+  box-shadow:0 0 0 2px #eef2ff;
+}
+
+/* Section spacing */
+.mt-3 {
+  margin-top:12px;
+}
+
+/* Doctor box */
+.doctor-box {
+  background:#faf8fc;
+  border-radius:14px;
+  padding:16px;
+  border:1px solid #eee;
+}
+
+/* Button */
+button {
+  background:linear-gradient(135deg,#4f46e5,#6366f1);
+  color:white;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  font-weight:500;
+  cursor:pointer;
+  transition:0.25s;
+}
+button:hover {
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(79,70,229,0.3);
+}
+
+/* Alerts */
+.error { color:#dc2626; }
+.success { color:#16a34a; }
+</style>
+
 <div class='card' style='max-width:860px; margin:0 auto 14px;'>
+
   <div class='hero-header'>
-    <h2 class='page-title'>${user.role === 'patient' ? 'Patient Profile' : user.role === 'doctor' ? 'Doctor Profile' : 'Admin Profile'}</h2>
-    <span class='badge role-chip role-badge role-${user.role}'>${user.role}</span>
+    <h2 class='page-title'>
+      ${user.role === 'patient' ? 'Patient Profile' : user.role === 'doctor' ? 'Doctor Profile' : 'Admin Profile'}
+    </h2>
+
+    <span class='role-badge role-${user.role}'>
+      ${user.role}
+    </span>
   </div>
-  <div class='row' style='margin-top:8px;'>
-    <div class='badge'>Profile Details</div>
+
+  <div class='row' style='margin-top:10px;'>
+    <div class='badge'>Profile</div>
     <div class='badge'>Security</div>
-    <div class='badge'>Health Info</div>
+    <div class='badge'>Health</div>
   </div>
+
   ${error ? `<p class='error'>${error}</p>` : ''}
   ${message ? `<p class='success'>${message}</p>` : ''}
 
-  <form method='post' action='/users/me' style='margin-top:10px;'>
+  <form method='post' action='/users/me' style='margin-top:12px;'>
+
     <div class='row'>
       <div><label>Full name</label><input name='fullName' value='${user.fullName || ''}' required /></div>
       <div><label>Phone</label><input name='phone' value='${user.phone || ''}' /></div>
@@ -25,34 +141,46 @@
     ${user.role === 'patient' ? `
       <div class='mt-3'>
         <label>Chronic conditions</label>
-        <textarea name='chronicConditions' rows='2'>${(user.patientProfile && user.patientProfile.chronicConditions) || ''}</textarea>
+        <textarea name='chronicConditions' rows='2'>
+${(user.patientProfile && user.patientProfile.chronicConditions) || ''}
+        </textarea>
       </div>
+
       <div class='mt-3'>
         <label>Basic health info</label>
-        <textarea name='basicHealthInfo' rows='2'>${(user.patientProfile && user.patientProfile.basicHealthInfo) || ''}</textarea>
+        <textarea name='basicHealthInfo' rows='2'>
+${(user.patientProfile && user.patientProfile.basicHealthInfo) || ''}
+        </textarea>
       </div>
     ` : ''}
 
     ${user.role === 'doctor' ? `
-      <div class='card' style='background:#faf8fc;'>
-        <h3 style='margin:0 0 8px;'>Doctor profile</h3>
+      <div class='doctor-box mt-3'>
+        <h3 style='margin:0 0 10px;'>Doctor Details</h3>
+
         <div class='row'>
           <div><label>Specialization</label><input name='specialization' value='${(user.doctorProfile && user.doctorProfile.specialization) || ''}' /></div>
-          <div><label>Years of experience</label><input name='yearsOfExperience' type='number' min='0' value='${(user.doctorProfile && (user.doctorProfile.yearsOfExperience ?? '')) || ''}' /></div>
+          <div><label>Experience (years)</label><input name='yearsOfExperience' type='number' min='0' value='${(user.doctorProfile && (user.doctorProfile.yearsOfExperience ?? '')) || ''}' /></div>
           <div><label>Qualifications</label><input name='qualifications' value='${(user.doctorProfile && user.doctorProfile.qualifications) || ''}' /></div>
           <div><label>Clinic</label><input name='clinicName' value='${(user.doctorProfile && user.doctorProfile.clinicName) || ''}' /></div>
-          <div><label>Consultation languages</label><input name='consultationLanguages' value='${(user.doctorProfile && user.doctorProfile.consultationLanguages) || ''}' /></div>
+          <div><label>Languages</label><input name='consultationLanguages' value='${(user.doctorProfile && user.doctorProfile.consultationLanguages) || ''}' /></div>
         </div>
+
         <div style='margin-top:10px;'>
           <label>Description</label>
-          <textarea name='description' rows='2'>${(user.doctorProfile && user.doctorProfile.description) || ''}</textarea>
+          <textarea name='description' rows='2'>
+${(user.doctorProfile && user.doctorProfile.description) || ''}
+          </textarea>
         </div>
       </div>
     ` : ''}
 
-    <div style='margin-top:14px;'>
-      <button type='submit' style='width:100%;'>Save</button>
+    <div style='margin-top:16px;'>
+      <button type='submit'>Save Changes</button>
     </div>
+
   </form>
+
 </div>
+
 ` }) %>

@@ -1,27 +1,111 @@
 <%- include('partials/layout', { title: 'Appointments', user, body: `
+
+<style>
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border: 1px solid #f1f1f1;
+}
+
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.page-title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.badge {
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.appointment-item {
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid #eee;
+  transition: 0.2s;
+}
+.appointment-item:hover {
+  background: #fafafa;
+}
+
+.btn-secondary {
+  background: #4f46e5;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: 0.2s;
+}
+.btn-secondary:hover {
+  background: #4338ca;
+}
+
+.time-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.meta {
+  margin-top: 6px;
+  color: #4b5563;
+  font-size: 0.92rem;
+}
+</style>
+
 <div class='card'>
   <div class='hero-header'>
     <h2 class='page-title' style='font-size:1.6rem;'>Upcoming Appointments</h2>
     <span class='badge'>${upcomingAppointments.length} total</span>
   </div>
-  ${upcomingAppointments.length === 0 ? '<p>No upcoming appointments.</p>' : ''}
+
+  ${upcomingAppointments.length === 0 ? '<p style="color:#6b7280;">No upcoming appointments.</p>' : ''}
 
   ${upcomingAppointments.map(a => `
-    <div class='card' style='margin-bottom:10px;'>
+    <div class='appointment-item' style='margin-bottom:10px;'>
       <div class='row' style='align-items:center;'>
+        
         <div>
-          <div style='font-size:1.02rem; font-weight:700;'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
-          <div style='margin-top:5px;'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
-          <div style='margin-top:7px;'>
+          <div class='time-text'>
+            ${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC
+          </div>
+
+          <div class='meta'>
+            <span class='badge'>${a.status}</span>
+            <span class='badge'>${a.mode}</span>
+          </div>
+
+          <div class='meta'>
             ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
           </div>
-          <div style='margin-top:5px;'>
+
+          <div class='meta'>
             <span class='badge'>For: ${a.familyMember ? a.familyMember.fullName : a.patient.fullName}</span>
           </div>
         </div>
-        <div style='align-self:center;'>
-          <a class='btn-secondary' href='/appointments/${a.id}'>Open details</a>
+
+        <div>
+          <a class='btn-secondary' href='/appointments/${a.id}'>Open</a>
         </div>
+
       </div>
     </div>
   `).join('')}
@@ -32,26 +116,39 @@
     <h2 class='page-title' style='font-size:1.6rem;'>Done Appointments</h2>
     <span class='badge'>${doneAppointments.length} total</span>
   </div>
-  ${doneAppointments.length === 0 ? '<p>No completed/cancelled appointments yet.</p>' : ''}
+
+  ${doneAppointments.length === 0 ? '<p style="color:#6b7280;">No completed/cancelled appointments yet.</p>' : ''}
 
   ${doneAppointments.map(a => `
-    <div class='card' style='margin-bottom:10px;'>
+    <div class='appointment-item' style='margin-bottom:10px;'>
       <div class='row' style='align-items:center;'>
+        
         <div>
-          <div style='font-size:1.02rem; font-weight:700;'>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</div>
-          <div style='margin-top:5px;'><span class='badge'>${a.status}</span> <span class='badge'>${a.mode}</span></div>
-          <div style='margin-top:7px;'>
+          <div class='time-text'>
+            ${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC
+          </div>
+
+          <div class='meta'>
+            <span class='badge'>${a.status}</span>
+            <span class='badge'>${a.mode}</span>
+          </div>
+
+          <div class='meta'>
             ${user.role === 'doctor' ? `Patient: ${a.patient.fullName}` : `Doctor: ${a.doctor.fullName}`}
           </div>
-          <div style='margin-top:5px;'>
+
+          <div class='meta'>
             <span class='badge'>For: ${a.familyMember ? a.familyMember.fullName : a.patient.fullName}</span>
           </div>
         </div>
-        <div style='align-self:center;'>
-          <a class='btn-secondary' href='/appointments/${a.id}'>Open details</a>
+
+        <div>
+          <a class='btn-secondary' href='/appointments/${a.id}'>Open</a>
         </div>
+
       </div>
     </div>
   `).join('')}
 </div>
+
 ` }) %>

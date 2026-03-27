@@ -1,80 +1,169 @@
 <%- include('partials/layout', { title: 'Call', user, body: `
-<div class='card'>
-  <h2 class='text-3xl font-semibold m-0 mb-2'>Consultation</h2>
-  <p><b>Appointment:</b> ${appointment.id}</p>
-  <p><b>Mode:</b> <span class='badge'>${appointment.mode}</span></p>
-  <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}</p>
 
-  <div class='row'>
-    <div>
-      <button id='btnVideo'>Video call</button>
-    </div>
-    <div>
-      <button id='btnAudio'>Audio call</button>
-    </div>
-    <div>
-      <button id='btnText'>Text chat</button>
-    </div>
-    <div>
-      <form method='post' action='/calls/${appointment.id}/end' style='margin:0;'>
-        <button class='secondary' type='submit'>End session</button>
-      </form>
-    </div>
+<style>
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  border: 1px solid #f1f1f1;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #4f46e5;
+  color: white;
+  transition: 0.2s;
+}
+button:hover {
+  background: #4338ca;
+}
+button.secondary {
+  background: #6b7280;
+}
+button.secondary:hover {
+  background: #4b5563;
+}
+
+.video-box {
+  flex: 1 1 300px;
+}
+
+video {
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  border: 1px solid #0f172a22;
+}
+
+.chat-box {
+  height: 220px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fafafa;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.header-meta {
+  color: #4b5563;
+  margin-top: 6px;
+}
+</style>
+
+<!-- Consultation Header -->
+<div class='card'>
+  <h2 class='text-3xl font-semibold mb-2'>Consultation</h2>
+
+  <p class="header-meta"><b>Appointment:</b> ${appointment.id}</p>
+  <p class="header-meta"><b>Mode:</b> <span class='badge'>${appointment.mode}</span></p>
+  <p class="header-meta">
+    <b>Doctor:</b> ${appointment.doctor.fullName} | 
+    <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}
+  </p>
+
+  <div class='row' style='margin-top:12px;'>
+    <button id='btnVideo'>🎥 Video</button>
+    <button id='btnAudio'>🎧 Audio</button>
+    <button id='btnText'>💬 Chat</button>
+
+    <form method='post' action='/calls/${appointment.id}/end'>
+      <button class='secondary' type='submit'>End Session</button>
+    </form>
+
     ${(user.role === 'doctor' && user.id === appointment.doctorId) || user.role === 'admin' ? `
-      <div>
-        <form method='post' action='/appointments/${appointment.id}/end' style='margin:0;'>
-          <button type='submit'>Close Appointment</button>
-        </form>
-      </div>
+      <form method='post' action='/appointments/${appointment.id}/end'>
+        <button type='submit'>Close Appointment</button>
+      </form>
     ` : ''}
   </div>
 </div>
 
+<!-- Patient Context -->
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Patient Medical Context</h3>
-  <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
-  <p><b>Chronic conditions:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
-  <p><b>Basic health info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
+  <h3 class='text-xl font-semibold mb-2'>Patient Medical Context</h3>
 
-  <h4>Previous prescriptions</h4>
-  ${history.historyAppointments.length === 0 ? '<p>No previous completed consultations found.</p>' : ''}
+  <p><b>For:</b> ${history.currentPatientProfile.name}${history.currentPatientProfile.relationToPatient ? ` (${history.currentPatientProfile.relationToPatient})` : ''}</p>
+  <p><b>Chronic:</b> ${history.currentPatientProfile.chronicConditions || 'N/A'}</p>
+  <p><b>Health Info:</b> ${history.currentPatientProfile.basicHealthInfo || 'N/A'}</p>
+
+  <h4 style='margin-top:10px;'>Previous prescriptions</h4>
+
+  ${history.historyAppointments.length === 0 ? '<p>No previous consultations found.</p>' : ''}
+
   ${history.historyAppointments.map(a => `
-    <div class='card !bg-white/70'>
-      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b> with ${a.doctor.fullName}</div>
-      <div>${a.prescription ? `Diagnosis: ${a.prescription.diagnosis}` : 'No prescription'}</div>
+    <div class='card' style='background:#fafafa; padding:12px;'>
+      <div><b>${new Date(a.startAt).toISOString().replace('T',' ').slice(0,16)} UTC</b></div>
+      <div>${a.prescription ? a.prescription.diagnosis : 'No prescription'}</div>
     </div>
   `).join('')}
 </div>
 
+<!-- Video Section -->
 <div class='card'>
   <div class='row'>
-    <div>
+    <div class='video-box'>
       <h3>Local</h3>
-      <video id='localVideo' autoplay muted playsinline style='width:100%; background:#000; border-radius:12px; border:1px solid #0f172a22;'></video>
+      <video id='localVideo' autoplay muted playsinline></video>
     </div>
-    <div>
+
+    <div class='video-box'>
       <h3>Remote</h3>
-      <video id='remoteVideo' autoplay playsinline style='width:100%; background:#000; border-radius:12px; border:1px solid #0f172a22;'></video>
+      <video id='remoteVideo' autoplay playsinline></video>
     </div>
   </div>
 
-  <div class='row' style='margin-top:10px;'>
-    <div><button id='btnMute' class='secondary'>Mute</button></div>
-    <div><button id='btnCamera' class='secondary'>Toggle camera</button></div>
-    <div><span id='status' class='badge'>idle</span></div>
+  <div class='row' style='margin-top:12px;'>
+    <button id='btnMute' class='secondary'>Mute</button>
+    <button id='btnCamera' class='secondary'>Camera</button>
+    <span id='status' class='badge'>idle</span>
   </div>
 </div>
 
+<!-- Chat Section -->
 <div class='card'>
-  <h3 class='text-xl font-semibold m-0 mb-2'>Text chat</h3>
-  <div id='chatLog' style='height:200px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff;'></div>
+  <h3 class='text-xl font-semibold mb-2'>Text Chat</h3>
+
+  <div id='chatLog' class='chat-box'></div>
+
   <form id='chatForm' class='row' style='margin-top:10px;'>
-    <div style='flex: 1 1 600px;'><input id='chatInput' placeholder='Type message...' /></div>
-    <div style='flex: 0 0 160px;'><button type='submit'>Send</button></div>
+    <div style='flex:1;'>
+      <input id='chatInput' placeholder='Type message...' />
+    </div>
+    <div>
+      <button type='submit'>Send</button>
+    </div>
   </form>
 </div>
 
 <div id='callRuntimeConfig' data-call-config='${callConfigEncoded}'></div>
+
 <script src='/socket.io/socket.io.js'></script>
 <script src='/public/js/call.js'></script>
+
 ` }) %>

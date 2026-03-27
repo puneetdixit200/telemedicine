@@ -1,26 +1,141 @@
 <%- include('partials/layout', { title: 'Register', user, body: `
+
+<style>
+.card {
+  background:#fff;
+  border-radius:18px;
+  padding:24px;
+  margin-bottom:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.08);
+  border:1px solid #f1f1f1;
+  max-width:900px;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.page-title {
+  font-size:1.8rem;
+  margin:0;
+  font-weight:600;
+}
+
+.page-subtitle {
+  color:#6b7280;
+  font-size:0.9rem;
+}
+
+/* Layout */
+.row {
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.row > div {
+  flex:1 1 240px;
+}
+
+/* Inputs */
+label {
+  font-size:12px;
+  color:#6b7280;
+  display:block;
+  margin-bottom:4px;
+}
+
+input, select, textarea {
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  transition:0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color:#4f46e5;
+  outline:none;
+  box-shadow:0 0 0 2px #eef2ff;
+}
+
+/* Button */
+button {
+  width:100%;
+  background:linear-gradient(135deg,#4f46e5,#6366f1);
+  color:white;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  font-weight:500;
+  cursor:pointer;
+  transition:0.25s;
+}
+button:hover {
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(79,70,229,0.3);
+}
+
+/* Error */
+.error {
+  color:#dc2626;
+}
+
+/* Section */
+.section-card {
+  background:#fafafa;
+  border-radius:14px;
+  padding:16px;
+  border:1px solid #eee;
+  margin-top:14px;
+}
+
+.section-title {
+  margin:0 0 10px;
+  font-weight:600;
+}
+
+/* Link */
+a {
+  color:#4f46e5;
+  text-decoration:none;
+}
+a:hover {
+  text-decoration:underline;
+}
+</style>
+
 <div class='card'>
-  <p class='page-subtitle' style='text-transform:uppercase; letter-spacing:0.08em; margin:0 0 6px;'>Create Account</p>
+
+  <p class='page-subtitle' style='text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;'>
+    Create Account
+  </p>
+
   <h2 class='page-title'>Register</h2>
+
   ${error ? `<p class='error'>${error}</p>` : ''}
-  <form method='post' action='/auth/register' style='margin-top:12px;'>
+
+  <form method='post' action='/auth/register' style='margin-top:14px;'>
+
     <div class='row'>
+
       <div>
         <label>Full name</label>
         <input name='fullName' required />
       </div>
+
       <div>
         <label>Email</label>
         <input name='email' type='email' required />
       </div>
+
       <div>
         <label>Phone</label>
         <input name='phone' />
       </div>
+
       <div>
         <label>Password</label>
         <input name='password' type='password' required />
       </div>
+
       <div>
         <label>Role</label>
         <select name='role' required>
@@ -29,48 +144,75 @@
           <option value='admin'>Admin</option>
         </select>
       </div>
+
       <div>
-        <label>Admin invite code (only if admin)</label>
-        <input name='adminInviteCode' />
+        <label>Admin invite code</label>
+        <input name='adminInviteCode' placeholder='Only for admin' />
       </div>
+
       <div>
         <label>Gender</label>
         <input name='gender' />
       </div>
+
       <div>
         <label>Date of birth</label>
         <input name='dateOfBirth' type='date' />
       </div>
+
       <div>
         <label>Address</label>
         <input name='address' />
       </div>
+
       <div>
-        <label>Language preference</label>
+        <label>Language</label>
         <input name='language' />
       </div>
+
       <div>
         <label>Time zone</label>
         <input name='timeZone' placeholder='e.g. Asia/Kolkata' />
       </div>
+
     </div>
 
-    <div class='card'>
-      <h3 style='margin:0 0 8px;'>Doctor details (only if role=doctor)</h3>
+    <!-- Doctor Section -->
+    <div class='section-card'>
+
+      <h3 class='section-title'>Doctor Details (if role = doctor)</h3>
+
       <div class='row'>
+
         <div><label>Specialization</label><input name='specialization' /></div>
-        <div><label>Years of experience</label><input name='yearsOfExperience' type='number' min='0' /></div>
+
+        <div><label>Experience (years)</label><input name='yearsOfExperience' type='number' min='0' /></div>
+
         <div><label>Qualifications</label><input name='qualifications' /></div>
-        <div><label>Clinic/Hospital name</label><input name='clinicName' /></div>
-        <div><label>Consultation languages</label><input name='consultationLanguages' placeholder='English,Hindi' /></div>
+
+        <div><label>Clinic/Hospital</label><input name='clinicName' /></div>
+
+        <div><label>Languages</label><input name='consultationLanguages' placeholder='English,Hindi' /></div>
+
       </div>
-      <div style='margin-top:10px;'><label>Description</label><textarea name='description' rows='2'></textarea></div>
+
+      <div style='margin-top:10px;'>
+        <label>Description</label>
+        <textarea name='description' rows='2'></textarea>
+      </div>
+
     </div>
 
-    <div style='margin-top:12px;'>
-      <button type='submit'>Create account</button>
+    <div style='margin-top:16px;'>
+      <button type='submit'>Create Account</button>
     </div>
+
   </form>
-  <p class='page-subtitle' style='margin-top:12px;'>Already have an account? <a href='/auth/login'>Login</a></p>
+
+  <p class='page-subtitle' style='margin-top:12px;'>
+    Already have an account? <a href='/auth/login'>Login</a>
+  </p>
+
 </div>
+
 ` }) %>

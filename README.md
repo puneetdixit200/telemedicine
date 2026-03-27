@@ -203,8 +203,6 @@ Enums include role, appointment status, slot status, consultation mode, and call
 |  |- presence.service.js
 |- scripts/
 |  |- migrate-local-uploads-to-azure.js
-|- realtime/
-|  |- socket.js (compatibility re-export)
 |- public/
 |  |- css/
 |  |- js/
