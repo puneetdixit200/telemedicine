@@ -9,7 +9,9 @@ const upsertSchema = z.object({
   duration: z.union([z.string(), z.array(z.string())]).optional(),
   instructions: z.string().optional().or(z.literal('')),
   followUpAt: z.string().optional().or(z.literal('')),
-  notes: z.string().optional().or(z.literal(''))
+  notes: z.string().optional().or(z.literal('')),
+  pharmacyName: z.string().max(180).optional().or(z.literal('')),
+  pharmacyContact: z.string().max(180).optional().or(z.literal(''))
 });
 
 module.exports = { upsertSchema };

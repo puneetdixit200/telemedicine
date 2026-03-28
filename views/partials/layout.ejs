@@ -19,28 +19,16 @@
         <a class="nav-link" href="/appointments">Appointments</a>
       <% } %>
       <div class="spacer"></div>
-      <select id="languageSelector" aria-label="Language selector">
-        <option value="en">English</option>
-        <option value="hi">Hindi</option>
-        <option value="bn">Bengali</option>
-        <option value="gu">Gujarati</option>
-        <option value="kn">Kannada</option>
-        <option value="ml">Malayalam</option>
-        <option value="mr">Marathi</option>
-        <option value="pa">Punjabi</option>
-        <option value="ta">Tamil</option>
-        <option value="te">Telugu</option>
-        <option value="ur">Urdu</option>
-      </select>
-      <div id="google_translate_element" class="translate-hidden" aria-hidden="true"></div>
       <% if (user) { %>
         <span id="selfPresenceBadge" class="badge presence-badge <%= user.isCallOnline ? 'presence-online' : 'presence-offline' %>"><%= user.isCallOnline ? 'online' : 'offline' %></span>
         <span class="badge role-badge role-<%= user.role %>"><%= user.role %></span>
+        <button id="assistedModeToggle" class="secondary" type="button" aria-pressed="false">Assisted mode</button>
         <span class="nav-user-name"><%= user.fullName %></span>
         <form method="post" action="/auth/logout" style="margin:0;">
           <button class="secondary logout-btn" type="submit">Logout</button>
         </form>
       <% } else { %>
+        <button id="assistedModeToggle" class="secondary" type="button" aria-pressed="false">Assisted mode</button>
         <a class="nav-link" href="/auth/login">Login</a>
         <a class="nav-link" href="/auth/register">Register</a>
       <% } %>
@@ -49,7 +37,26 @@
     <%- body %>
   </div>
 
+  <div class="language-dock" role="region" aria-label="Language switcher">
+    <label class="language-dock-label" for="languageSelector">Language</label>
+    <select id="languageSelector" aria-label="Language selector">
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+      <option value="bn">Bengali</option>
+      <option value="gu">Gujarati</option>
+      <option value="kn">Kannada</option>
+      <option value="ml">Malayalam</option>
+      <option value="mr">Marathi</option>
+      <option value="pa">Punjabi</option>
+      <option value="ta">Tamil</option>
+      <option value="te">Telugu</option>
+      <option value="ur">Urdu</option>
+    </select>
+    <div id="google_translate_element" class="translate-hidden" aria-hidden="true"></div>
+  </div>
+
   <script src="/public/js/presence-ping.js"></script>
+  <script src="/public/js/accessibility.js"></script>
   <script src="/public/js/translation.js"></script>
   </div>
 </body>

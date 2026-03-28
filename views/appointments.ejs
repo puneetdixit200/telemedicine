@@ -74,7 +74,10 @@
 <div class='card'>
   <div class='hero-header'>
     <h2 class='page-title' style='font-size:1.6rem;'>Upcoming Appointments</h2>
-    <span class='badge'>${upcomingAppointments.length} total</span>
+    <div>
+      <span class='badge'>${upcomingAppointments.length} total</span>
+      <a class='btn-secondary' style='margin-left:8px;' href='/appointments/impact'>Impact</a>
+    </div>
   </div>
 
   ${upcomingAppointments.length === 0 ? '<p style="color:#6b7280;">No upcoming appointments.</p>' : ''}
@@ -91,6 +94,8 @@
           <div class='meta'>
             <span class='badge'>${a.status}</span>
             <span class='badge'>${a.mode}</span>
+            <span class='badge'>Triage: ${a.triage ? a.triage.label : 'Not assessed'}</span>
+            ${a.reminder && a.reminder.dueSoon ? `<span class='badge'>${a.reminder.label}</span>` : ''}
           </div>
 
           <div class='meta'>
@@ -131,6 +136,7 @@
           <div class='meta'>
             <span class='badge'>${a.status}</span>
             <span class='badge'>${a.mode}</span>
+            <span class='badge'>Triage: ${a.triage ? a.triage.label : 'Not assessed'}</span>
           </div>
 
           <div class='meta'>

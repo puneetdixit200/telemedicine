@@ -5,6 +5,7 @@ const { appointmentsController } = require('../controllers/appointments.controll
 const router = express.Router();
 
 router.get('/', authRequired, appointmentsController.listMyAppointments);
+router.get('/impact', authRequired, appointmentsController.viewImpactDashboard);
 router.get('/:appointmentId', authRequired, appointmentsController.viewAppointment);
 router.get('/:appointmentId/presence', authRequired, appointmentsController.getPresence);
 

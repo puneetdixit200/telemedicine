@@ -16,6 +16,10 @@
         <div class='kicker'>Account</div>
         <div class='headline'>View / edit profile</div>
       </a>
+      <a class='action-card' href='/appointments/impact'>
+        <div class='kicker'>KPI</div>
+        <div class='headline'>Impact dashboard</div>
+      </a>
       ${user.role === 'doctor' ? `<a class='action-card' href='/doctors/me/slots'><div class='kicker'>Schedule</div><div class='headline'>Manage your slots</div></a>` : ''}
       ${user.role === 'doctor' ? `<a class='action-card' href='/doctors/me/analytics'><div class='kicker'>Insights</div><div class='headline'>Doctor analytics</div></a>` : ''}
       ${user.role === 'patient' ? `<a class='action-card' href='/patients/workspace'><div class='kicker'>Health Records</div><div class='headline'>Patient workspace</div></a>` : ''}

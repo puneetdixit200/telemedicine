@@ -357,6 +357,41 @@ a:hover {
 	font-weight: 500;
 }
 
+body.assisted-mode {
+	font-size: 18px;
+	line-height: 1.6;
+}
+
+body.assisted-mode .container {
+	max-width: 1180px;
+}
+
+body.assisted-mode .card {
+	padding: 20px;
+	border-width: 2px;
+}
+
+body.assisted-mode button,
+body.assisted-mode .btn-primary,
+body.assisted-mode .btn-secondary {
+	min-height: 50px;
+	font-size: 1rem;
+	padding: 12px 16px;
+}
+
+body.assisted-mode input,
+body.assisted-mode select,
+body.assisted-mode textarea {
+	font-size: 1rem;
+	padding: 12px;
+	border-width: 2px;
+}
+
+body.assisted-mode .badge {
+	font-size: 0.82rem;
+	padding: 4px 10px;
+}
+
 .nav .spacer {
 	flex: 1;
 }
@@ -365,9 +400,38 @@ a:hover {
 	min-width: 180px;
 }
 
-#languageSelector {
+.language-dock {
+	position: fixed;
+	left: 14px;
+	bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+	z-index: 60;
+	background: #ffffffeb;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	box-shadow: 0 12px 28px -20px rgba(15, 23, 42, 0.75);
+	padding: 8px;
+	backdrop-filter: blur(8px);
 	min-width: 170px;
-	max-width: 220px;
+	max-width: 240px;
+}
+
+.language-dock-label {
+	display: block;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: #6b7280;
+	margin-bottom: 6px;
+}
+
+.language-dock #languageSelector {
+	min-width: 150px;
+	max-width: 100%;
+	height: 36px;
+	padding: 6px 10px;
+	font-size: 14px;
+	border-radius: 9px;
 }
 
 img,
@@ -698,6 +762,10 @@ pre {
 	.auth-shell {
 		grid-template-columns: 1fr;
 	}
+	.language-dock {
+		left: 12px;
+		bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+	}
 }
 
 @media (max-width: 780px) {
@@ -733,7 +801,14 @@ pre {
 	.quick-actions {
 		grid-template-columns: 1fr;
 	}
-	#languageSelector {
+	.language-dock {
+		left: 10px;
+		right: 10px;
+		max-width: none;
+		min-width: 0;
+		padding: 8px 10px;
+	}
+	.language-dock #languageSelector {
 		min-width: 100%;
 		max-width: 100%;
 	}
@@ -807,5 +882,8 @@ pre {
 	}
 	.badge {
 		font-size: 11px;
+	}
+	.language-dock-label {
+		font-size: 10px;
 	}
 }

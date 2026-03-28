@@ -71,7 +71,7 @@ function initSocket(httpServer) {
       const room = `appt:${appointmentId}`;
       io.to(room).emit('chat', {
         fromUserId: socket.user.id,
-        fromName: socket.user.fullName,
+        fromRole: socket.user.role,
         message,
         at: new Date().toISOString()
       });

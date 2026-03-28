@@ -2,6 +2,7 @@
   if (!document.getElementById('google_translate_element')) return;
   var selector = document.getElementById('languageSelector');
   var supported = ['en', 'hi', 'bn', 'gu', 'kn', 'ml', 'mr', 'pa', 'ta', 'te', 'ur'];
+  var langStorageKey = 'telemed_language';
 
   function setGoogTransCookie(lang) {
     var value = '/en/' + lang;
@@ -22,6 +23,28 @@
     var parts = cookie.split('=')[1].split('/');
     var lang = parts[2] || 'en';
     return supported.indexOf(lang) >= 0 ? lang : 'en';
+  }
+
+  function setStoredLanguage(lang) {
+    try {
+      localStorage.setItem(langStorageKey, lang);
+      sessionStorage.setItem(langStorageKey, lang);
+    } catch (_err) {
+      // Ignore storage failures (private mode / restricted environments).
+    }
+  }
+
+  function getStoredLanguage() {
+    try {
+      var fromSession = sessionStorage.getItem(langStorageKey);
+      if (fromSession && supported.indexOf(fromSession) >= 0) return fromSession;
+
+      var fromLocal = localStorage.getItem(langStorageKey);
+      if (fromLocal && supported.indexOf(fromLocal) >= 0) return fromLocal;
+    } catch (_err) {
+      // Ignore storage failures and rely on cookie.
+    }
+    return null;
   }
 
   function hideGoogleTopBar() {
@@ -48,11 +71,18 @@
     });
   }
 
+  var preferredLanguage = getStoredLanguage() || getSelectedLanguageFromCookie();
+  if (supported.indexOf(preferredLanguage) === -1) preferredLanguage = 'en';
+
+  setStoredLanguage(preferredLanguage);
+  setGoogTransCookie(preferredLanguage);
+
   if (selector) {
-    selector.value = getSelectedLanguageFromCookie();
+    selector.value = preferredLanguage;
     selector.addEventListener('change', function () {
       var next = selector.value;
       if (supported.indexOf(next) === -1) next = 'en';
+      setStoredLanguage(next);
       setGoogTransCookie(next);
       window.location.reload();
     });

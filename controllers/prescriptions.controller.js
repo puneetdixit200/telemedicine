@@ -45,12 +45,60 @@ function parseStructuredItems(raw) {
   return items;
 }
 
+function parseHandoffFromNotes(notesValue) {
+  const lines = String(notesValue || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim());
+
+  let pharmacyName = '';
+  let pharmacyContact = '';
+  const cleanNotes = [];
+
+  lines.forEach((line) => {
+    if (!line) return;
+    if (line.startsWith('[PHARMACY] ')) {
+      pharmacyName = line.replace('[PHARMACY] ', '').trim();
+      return;
+    }
+    if (line.startsWith('[PHARMACY_CONTACT] ')) {
+      pharmacyContact = line.replace('[PHARMACY_CONTACT] ', '').trim();
+      return;
+    }
+    cleanNotes.push(line);
+  });
+
+  return {
+    pharmacyName,
+    pharmacyContact,
+    cleanNotes: cleanNotes.join('\n').trim()
+  };
+}
+
+function buildNotesWithHandoff(baseNotes, pharmacyName, pharmacyContact) {
+  const lines = [];
+  const clean = String(baseNotes || '').trim();
+  const pharmacy = String(pharmacyName || '').trim();
+  const contact = String(pharmacyContact || '').trim();
+
+  if (clean) lines.push(clean);
+  if (pharmacy) lines.push(`[PHARMACY] ${pharmacy}`);
+  if (contact) lines.push(`[PHARMACY_CONTACT] ${contact}`);
+
+  return lines.join('\n').trim() || null;
+}
+
+function buildHandoffCode(appointmentId) {
+  const prefix = String(appointmentId || '').split('-')[0] || 'NA';
+  return `RX-${prefix.toUpperCase()}`;
+}
+
 async function ensureAppointmentAccess(appointmentId, user) {
   const appt = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: {
       doctor: { select: { id: true, fullName: true } },
       patient: { select: { id: true, fullName: true } },
+      familyMember: { select: { id: true, fullName: true } },
       prescription: true
     }
   });
@@ -67,7 +115,19 @@ const prescriptionsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Not found' });
 
-      return res.render('prescription', { user: req.user, appointment: appt, error: null, message: null });
+      const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
+      if (appt.prescription) {
+        appt.prescription.notes = handoff.cleanNotes;
+      }
+
+      return res.render('prescription', {
+        user: req.user,
+        appointment: appt,
+        handoff,
+        handoffCode: buildHandoffCode(appt.id),
+        error: null,
+        message: null
+      });
     } catch (e) {
       return next(e);
     }
@@ -92,9 +152,12 @@ const prescriptionsController = {
 
       const parsed = upsertSchema.safeParse(req.body);
       if (!parsed.success) {
+        const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
         return res.status(400).render('prescription', {
           user: req.user,
           appointment: appt,
+          handoff,
+          handoffCode: buildHandoffCode(appt.id),
           error: 'Invalid inputs (diagnosis + at least one medication line required).',
           message: null
         });
@@ -105,13 +168,18 @@ const prescriptionsController = {
         items = parseItems(parsed.data.itemsText);
       }
       if (items.length === 0) {
+        const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
         return res.status(400).render('prescription', {
           user: req.user,
           appointment: appt,
+          handoff,
+          handoffCode: buildHandoffCode(appt.id),
           error: 'Add at least one medication with name/dosage/frequency/duration.',
           message: null
         });
       }
+
+      const notesWithHandoff = buildNotesWithHandoff(parsed.data.notes, parsed.data.pharmacyName, parsed.data.pharmacyContact);
 
       await prisma.prescription.upsert({
         where: { appointmentId },
@@ -120,7 +188,7 @@ const prescriptionsController = {
           items,
           instructions: parsed.data.instructions || null,
           followUpAt: parsed.data.followUpAt ? new Date(parsed.data.followUpAt) : null,
-          notes: parsed.data.notes || null
+          notes: notesWithHandoff
         },
         create: {
           appointmentId,
@@ -128,14 +196,25 @@ const prescriptionsController = {
           items,
           instructions: parsed.data.instructions || null,
           followUpAt: parsed.data.followUpAt ? new Date(parsed.data.followUpAt) : null,
-          notes: parsed.data.notes || null
+          notes: notesWithHandoff
         }
       });
 
       await prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'completed' } });
 
       const refreshed = await ensureAppointmentAccess(appointmentId, req.user);
-      return res.render('prescription', { user: req.user, appointment: refreshed, error: null, message: 'Saved.' });
+      const handoff = parseHandoffFromNotes(refreshed?.prescription?.notes || '');
+      if (refreshed && refreshed.prescription) {
+        refreshed.prescription.notes = handoff.cleanNotes;
+      }
+      return res.render('prescription', {
+        user: req.user,
+        appointment: refreshed,
+        handoff,
+        handoffCode: buildHandoffCode(appointmentId),
+        error: null,
+        message: 'Saved.'
+      });
     } catch (e) {
       return next(e);
     }
@@ -185,9 +264,19 @@ const prescriptionsController = {
         doc.fontSize(12).text(`Follow-up: ${new Date(appt.prescription.followUpAt).toISOString().slice(0, 10)}`);
       }
 
-      if (appt.prescription.notes) {
+      const handoff = parseHandoffFromNotes(appt.prescription.notes || '');
+      doc.moveDown();
+      doc.fontSize(12).text(`Handoff code: ${buildHandoffCode(appt.id)}`);
+      if (handoff.pharmacyName) {
+        doc.fontSize(12).text(`Preferred pharmacy: ${handoff.pharmacyName}`);
+      }
+      if (handoff.pharmacyContact) {
+        doc.fontSize(12).text(`Pharmacy contact: ${handoff.pharmacyContact}`);
+      }
+
+      if (handoff.cleanNotes) {
         doc.moveDown();
-        doc.fontSize(10).text(`Notes: ${appt.prescription.notes}`);
+        doc.fontSize(10).text(`Notes: ${handoff.cleanNotes}`);
       }
 
       doc.end();

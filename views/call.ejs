@@ -86,6 +86,7 @@ input {
     <b>Doctor:</b> ${appointment.doctor.fullName} | 
     <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}
   </p>
+  <p class='header-meta'><span class='badge'>Auto fallback: Video -> Audio -> Text on unstable network</span></p>
 
   <div class='row' style='margin-top:12px;'>
     <button id='btnVideo'>🎥 Video</button>

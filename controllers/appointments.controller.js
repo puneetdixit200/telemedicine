@@ -69,6 +69,77 @@ async function loadWorkspaceDocuments(appointment) {
   });
 }
 
+function computeTriage(problemDescription) {
+  const text = String(problemDescription || '').toLowerCase();
+  if (!text) return { level: 'unknown', score: 0, label: 'Not assessed' };
+
+  const criticalTerms = ['chest pain', 'breathing', 'unconscious', 'stroke', 'seizure', 'bleeding heavily'];
+  const urgentTerms = ['high fever', 'severe pain', 'vomiting', 'dehydration', 'infection', 'wheezing'];
+  const moderateTerms = ['headache', 'rash', 'fatigue', 'cough', 'sore throat', 'stomach pain'];
+
+  let score = 0;
+  criticalTerms.forEach((t) => {
+    if (text.includes(t)) score += 3;
+  });
+  urgentTerms.forEach((t) => {
+    if (text.includes(t)) score += 2;
+  });
+  moderateTerms.forEach((t) => {
+    if (text.includes(t)) score += 1;
+  });
+
+  if (score >= 6) return { level: 'critical', score, label: 'Critical' };
+  if (score >= 3) return { level: 'high', score, label: 'High' };
+  if (score >= 1) return { level: 'moderate', score, label: 'Moderate' };
+  return { level: 'low', score, label: 'Low' };
+}
+
+function buildReminderInfo(startAt) {
+  const now = Date.now();
+  const startMs = new Date(startAt).getTime();
+  const diffMins = Math.round((startMs - now) / 60000);
+
+  if (Number.isNaN(diffMins)) {
+    return { dueSoon: false, label: 'Schedule unavailable', minutesUntil: null };
+  }
+  if (diffMins <= 0) {
+    return { dueSoon: true, label: 'Session time reached', minutesUntil: diffMins };
+  }
+  if (diffMins <= 30) {
+    return { dueSoon: true, label: 'Reminder: starts in under 30 minutes', minutesUntil: diffMins };
+  }
+  if (diffMins <= 24 * 60) {
+    return { dueSoon: true, label: 'Reminder: starts within 24 hours', minutesUntil: diffMins };
+  }
+  return { dueSoon: false, label: 'No reminder yet', minutesUntil: diffMins };
+}
+
+async function renderAppointmentPage(res, reqUser, appointment, opts = {}) {
+  const history = await loadPatientHistory(appointment);
+  const workspaceDocuments = await loadWorkspaceDocuments(appointment);
+  const familyMembers =
+    opts.familyMembers ||
+    (reqUser.role === 'patient' && reqUser.id === appointment.patientId
+      ? await prisma.familyMember.findMany({
+          where: { ownerPatientId: reqUser.id },
+          orderBy: { fullName: 'asc' }
+        })
+      : []);
+
+  return res.render('appointment', {
+    user: reqUser,
+    appointment,
+    presence: getAppointmentPresence(appointment),
+    history,
+    workspaceDocuments,
+    familyMembers,
+    triage: computeTriage(appointment.problemDescription),
+    reminder: buildReminderInfo(appointment.startAt),
+    error: opts.error || null,
+    message: opts.message || null
+  });
+}
+
 const appointmentsController = {
   listMyAppointments: async (req, res, next) => {
     try {
@@ -94,10 +165,20 @@ const appointmentsController = {
       const now = new Date();
       const upcomingAppointments = appointments
         .filter((a) => a.status === 'booked' && new Date(a.startAt) >= now)
+        .map((a) => ({
+          ...a,
+          triage: computeTriage(a.problemDescription),
+          reminder: buildReminderInfo(a.startAt)
+        }))
         .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
 
       const doneAppointments = appointments
         .filter((a) => !(a.status === 'booked' && new Date(a.startAt) >= now))
+        .map((a) => ({
+          ...a,
+          triage: computeTriage(a.problemDescription),
+          reminder: buildReminderInfo(a.startAt)
+        }))
         .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
 
       return res.render('appointments', {
@@ -116,27 +197,7 @@ const appointmentsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
 
-      const presence = getAppointmentPresence(appt);
-      const history = await loadPatientHistory(appt);
-      const workspaceDocuments = await loadWorkspaceDocuments(appt);
-      const familyMembers =
-        req.user.role === 'patient' && req.user.id === appt.patientId
-          ? await prisma.familyMember.findMany({
-              where: { ownerPatientId: req.user.id },
-              orderBy: { fullName: 'asc' }
-            })
-          : [];
-
-      return res.render('appointment', {
-        user: req.user,
-        appointment: appt,
-        presence,
-        history,
-        workspaceDocuments,
-        familyMembers,
-        error: null,
-        message: null
-      });
+      return renderAppointmentPage(res, req.user, appt);
     } catch (e) {
       return next(e);
     }
@@ -225,23 +286,10 @@ const appointmentsController = {
       const parsed = preconsultSchema.safeParse(req.body);
       if (!parsed.success) {
         const appt = await ensureAppointmentAccess(appointmentId, req.user);
-        const history = appt ? await loadPatientHistory(appt) : null;
-        const familyMembers =
-          appt && req.user.role === 'patient' && req.user.id === appt.patientId
-            ? await prisma.familyMember.findMany({
-                where: { ownerPatientId: req.user.id },
-                orderBy: { fullName: 'asc' }
-              })
-            : [];
-        return res.status(400).render('appointment', {
-          user: req.user,
-          appointment: appt,
-          presence: appt ? getAppointmentPresence(appt) : null,
-          history,
-          workspaceDocuments: appt ? await loadWorkspaceDocuments(appt) : [],
-          familyMembers,
-          error: 'Invalid input',
-          message: null
+        if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
+        res.status(400);
+        return renderAppointmentPage(res, req.user, appt, {
+          error: 'Invalid input'
         });
       }
 
@@ -250,35 +298,10 @@ const appointmentsController = {
       if (appt.status !== 'booked') {
         return res.status(409).render('dashboard', { user: req.user, message: 'Appointment already closed.' });
       }
-      if (appt.status !== 'booked') {
-        return res.status(409).render('appointment', {
-          user: req.user,
-          appointment: appt,
-          presence: getAppointmentPresence(appt),
-          history: await loadPatientHistory(appt),
-          workspaceDocuments: await loadWorkspaceDocuments(appt),
-          familyMembers: await prisma.familyMember.findMany({ where: { ownerPatientId: req.user.id }, orderBy: { fullName: 'asc' } }),
-          error: 'Appointment is closed. Editing is not allowed.',
-          message: null
-        });
-      }
       if (req.user.role !== 'patient' || req.user.id !== appt.patientId) {
-        const familyMembers =
-          req.user.role === 'patient' && req.user.id === appt.patientId
-            ? await prisma.familyMember.findMany({
-                where: { ownerPatientId: req.user.id },
-                orderBy: { fullName: 'asc' }
-              })
-            : [];
-        return res.status(403).render('appointment', {
-          user: req.user,
-          appointment: appt,
-          presence: getAppointmentPresence(appt),
-          history: await loadPatientHistory(appt),
-          workspaceDocuments: await loadWorkspaceDocuments(appt),
-          familyMembers,
-          error: 'Only patient can update this.',
-          message: null
+        res.status(403);
+        return renderAppointmentPage(res, req.user, appt, {
+          error: 'Only patient can update this.'
         });
       }
 
@@ -300,15 +323,81 @@ const appointmentsController = {
         where: { ownerPatientId: req.user.id },
         orderBy: { fullName: 'asc' }
       });
-      return res.render('appointment', {
+      return renderAppointmentPage(res, req.user, updated, { familyMembers, message: 'Saved.' });
+    } catch (e) {
+      return next(e);
+    }
+  },
+
+  viewImpactDashboard: async (req, res, next) => {
+    try {
+      const where =
+        req.user.role === 'doctor'
+          ? { doctorId: req.user.id }
+          : req.user.role === 'patient'
+            ? { patientId: req.user.id }
+            : {};
+
+      const appointments = await prisma.appointment.findMany({
+        where,
+        include: {
+          prescription: { select: { followUpAt: true } },
+          callSession: { select: { startedAt: true, endedAt: true } }
+        },
+        orderBy: { startAt: 'desc' },
+        take: 400
+      });
+
+      const statusCounts = { booked: 0, completed: 0, cancelled: 0, no_show: 0 };
+      let urgentCount = 0;
+      let reminderDueCount = 0;
+      let followUpCount = 0;
+      let totalDurationMins = 0;
+      let durationSamples = 0;
+
+      const now = Date.now();
+      const next14Days = now + 14 * 24 * 60 * 60 * 1000;
+
+      for (const appointment of appointments) {
+        statusCounts[appointment.status] = (statusCounts[appointment.status] || 0) + 1;
+
+        const triage = computeTriage(appointment.problemDescription);
+        if (triage.level === 'critical' || triage.level === 'high') urgentCount += 1;
+
+        const reminder = buildReminderInfo(appointment.startAt);
+        if (appointment.status === 'booked' && reminder.dueSoon) reminderDueCount += 1;
+
+        if (appointment.prescription?.followUpAt) {
+          const followUpAt = new Date(appointment.prescription.followUpAt).getTime();
+          if (followUpAt >= now && followUpAt <= next14Days) followUpCount += 1;
+        }
+
+        if (appointment.callSession?.startedAt && appointment.callSession?.endedAt) {
+          const minutes = Math.round(
+            (new Date(appointment.callSession.endedAt).getTime() - new Date(appointment.callSession.startedAt).getTime()) / 60000
+          );
+          if (minutes > 0) {
+            totalDurationMins += minutes;
+            durationSamples += 1;
+          }
+        }
+      }
+
+      const total = appointments.length;
+      const completionRate = total ? Math.round((statusCounts.completed / total) * 100) : 0;
+      const avgConsultMins = durationSamples ? Math.round(totalDurationMins / durationSamples) : 0;
+
+      return res.render('appointments-impact', {
         user: req.user,
-        appointment: updated,
-        presence: getAppointmentPresence(updated),
-        history: await loadPatientHistory(updated),
-        workspaceDocuments: await loadWorkspaceDocuments(updated),
-        familyMembers,
-        error: null,
-        message: 'Saved.'
+        metrics: {
+          total,
+          statusCounts,
+          completionRate,
+          urgentCount,
+          reminderDueCount,
+          followUpCount,
+          avgConsultMins
+        }
       });
     } catch (e) {
       return next(e);

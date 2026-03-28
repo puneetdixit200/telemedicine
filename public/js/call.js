@@ -31,6 +31,7 @@ let isCameraOff = false;
 let makingOffer = false;
 let ignoreOffer = false;
 let isSettingRemoteAnswerPending = false;
+let reconnectDegradeTimer = null;
 const pendingIceCandidates = [];
 
 // Doctor acts as the stable offerer by default; patient is the polite peer.
@@ -50,11 +51,78 @@ function setStatus(s) {
   statusEl.textContent = s;
 }
 
+function stopLocalMedia() {
+  if (!localStream) return;
+  localStream.getTracks().forEach((track) => {
+    try {
+      track.stop();
+    } catch (_) {}
+  });
+  localStream = null;
+  localVideo.srcObject = null;
+}
+
+function disposePeerConnection() {
+  if (!pc) return;
+  try {
+    pc.onicecandidate = null;
+    pc.ontrack = null;
+    pc.onconnectionstatechange = null;
+    pc.oniceconnectionstatechange = null;
+    pc.onsignalingstatechange = null;
+    pc.close();
+  } catch (_) {}
+  pc = null;
+  remoteVideo.srcObject = null;
+  pendingIceCandidates.length = 0;
+}
+
+function clearDegradeTimer() {
+  if (!reconnectDegradeTimer) return;
+  clearTimeout(reconnectDegradeTimer);
+  reconnectDegradeTimer = null;
+}
+
+async function downgradeMode(reason) {
+  clearDegradeTimer();
+  logRtc('auto_downgrade', { reason, fromMode: currentMode });
+
+  if (currentMode === 'video') {
+    appendChat('[System] Network unstable. Switching to audio for stability.');
+    await startMode('audio');
+    return;
+  }
+
+  if (currentMode === 'audio') {
+    appendChat('[System] Network unstable. Switching to text chat fallback.');
+    await startMode('text');
+  }
+}
+
+function scheduleAutoDowngrade(reason) {
+  if (currentMode === 'text') return;
+  if (reconnectDegradeTimer) return;
+  reconnectDegradeTimer = setTimeout(() => {
+    reconnectDegradeTimer = null;
+    downgradeMode(reason).catch((e) => {
+      console.error('[CALL][RTC] auto downgrade failed', e);
+    });
+  }, 6000);
+}
+
 function appendChat(msg) {
   const div = document.createElement('div');
   div.textContent = msg;
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function roleLabel(role) {
+  const normalized = String(role || '').toLowerCase();
+  if (normalized === 'doctor') return 'Doctor';
+  if (normalized === 'patient') return 'Patient';
+  if (normalized === 'admin') return 'Admin';
+  return 'Participant';
 }
 
 function ensureSocket() {
@@ -149,14 +217,16 @@ function ensureSocket() {
     }
   });
 
-  socket.on('chat', ({ fromName, message, at }) => {
-    appendChat(`[${new Date(at).toLocaleTimeString()}] ${fromName}: ${message}`);
+  socket.on('chat', ({ fromRole, message, at }) => {
+    appendChat(`[${new Date(at).toLocaleTimeString()}] ${roleLabel(fromRole)}: ${message}`);
   });
 
   return socket;
 }
 
 async function setupLocalMedia(mode) {
+  stopLocalMedia();
+
   if (mode === 'text') {
     localVideo.srcObject = null;
     return;
@@ -192,6 +262,15 @@ async function setupPeerConnection() {
   pc.onconnectionstatechange = () => {
     logRtc('connection_state_change');
     setStatus(`pc:${pc.connectionState}`);
+
+    if (pc.connectionState === 'connected') {
+      clearDegradeTimer();
+      return;
+    }
+
+    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      scheduleAutoDowngrade(`connection_${pc.connectionState}`);
+    }
   };
 
   pc.oniceconnectionstatechange = () => {
@@ -232,10 +311,19 @@ async function maybeMakeOffer() {
 }
 
 async function startMode(mode) {
+  clearDegradeTimer();
+
+  if (currentMode !== mode) {
+    disposePeerConnection();
+    stopLocalMedia();
+  }
+
   currentMode = mode;
   ensureSocket();
 
   if (mode === 'text') {
+    disposePeerConnection();
+    stopLocalMedia();
     setStatus('text');
     return;
   }
@@ -248,8 +336,20 @@ async function startMode(mode) {
     setStatus('in_call');
   } catch (e) {
     console.error(e);
+    if (mode === 'video') {
+      setStatus('video_error_fallback_audio');
+      appendChat('[System] Video unavailable. Switched to audio mode.');
+      await startMode('audio');
+      return;
+    }
+    if (mode === 'audio') {
+      setStatus('audio_error_fallback_text');
+      appendChat('[System] Audio unavailable. Switched to text mode.');
+      await startMode('text');
+      return;
+    }
     setStatus('media_error');
-    alert('Camera/mic error. Check browser permissions.');
+    alert('Media error. Switching to text chat.');
   }
 }
 

@@ -5,6 +5,7 @@
   ${message ? `<p class='success'>${message}</p>` : ''}
 
   <p><b>Appointment:</b> ${appointment.id}</p>
+  <p><b>Handoff code:</b> <span class='badge'>${handoffCode || `RX-${appointment.id.split('-')[0].toUpperCase()}`}</span></p>
   <p><b>Doctor:</b> ${appointment.doctor.fullName} | <b>Patient:</b> ${appointment.familyMember ? `${appointment.familyMember.fullName} (family)` : appointment.patient.fullName}</p>
   <div class='row' style='align-items:center;'>
     <div style='flex:0 0 auto;'><button id='btnBackNav' class='secondary' type='button'>Back</button></div>
@@ -29,6 +30,9 @@
         : '<p>No medications listed.</p>'}
       <p><b>Instructions:</b></p>
       <p>${appointment.prescription.instructions || 'No instructions provided.'}</p>
+      ${handoff && handoff.pharmacyName ? `<p><b>Preferred pharmacy:</b> ${handoff.pharmacyName}</p>` : ''}
+      ${handoff && handoff.pharmacyContact ? `<p><b>Pharmacy contact:</b> ${handoff.pharmacyContact}</p>` : ''}
+      <p><b>Handoff code:</b> <span class='badge'>${handoffCode || `RX-${appointment.id.split('-')[0].toUpperCase()}`}</span></p>
       <p><a href='/prescriptions/${appointment.id}/pdf'>Download PDF</a></p>
     </div>
   ` : '<p>No prescription yet.</p>'}
@@ -65,6 +69,14 @@
         <div class='mt-3'>
           <label>Follow-up date</label>
           <input name='followUpAt' type='date' value='${appointment.prescription && appointment.prescription.followUpAt ? new Date(appointment.prescription.followUpAt).toISOString().slice(0,10) : ''}' />
+        </div>
+        <div class='mt-3'>
+          <label>Preferred pharmacy</label>
+          <input name='pharmacyName' value='${handoff && handoff.pharmacyName ? handoff.pharmacyName : ''}' placeholder='Pharmacy name or local chemist' />
+        </div>
+        <div class='mt-3'>
+          <label>Pharmacy contact</label>
+          <input name='pharmacyContact' value='${handoff && handoff.pharmacyContact ? handoff.pharmacyContact : ''}' placeholder='Phone or handoff note' />
         </div>
         <div class='mt-3'>
           <label>Notes</label>
