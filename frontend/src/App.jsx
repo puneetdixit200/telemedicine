@@ -2796,9 +2796,11 @@ function CallPage() {
 
 function PrescriptionPage() {
   const { appointmentId } = useParams();
+  const navigate = useNavigate();
   const { user } = useSession();
   const { data, setData, error, loading } = useApiPage(`/api/prescriptions/${appointmentId}`);
   const [message, setMessage] = useState('');
+  const [copyMessage, setCopyMessage] = useState('Show to Pharmacist');
   const [rows, setRows] = useState([{ medicationName: '', dosage: '', frequency: '', duration: '' }]);
   const [form, setForm] = useState({
     diagnosis: '',
@@ -2862,12 +2864,177 @@ function PrescriptionPage() {
       setData(res.data);
     }
 
-    setMessage('Prescription saved.');
+    navigate(`/appointments/${appointmentId}`, { replace: true });
+  };
+
+  const copyHandoffCode = async () => {
+    try {
+      await navigator.clipboard.writeText(data?.handoffCode || '');
+      setCopyMessage('Code copied');
+    } catch (_err) {
+      setCopyMessage('Copy unavailable');
+    }
+
+    window.setTimeout(() => setCopyMessage('Show to Pharmacist'), 1800);
   };
 
   if (loading) return <p className="muted">Loading prescription...</p>;
   if (error) return <p className="error">{error}</p>;
   if (!data?.appointment) return <p className="error">Prescription not found.</p>;
+
+  const appointment = data.appointment;
+  const prescription = appointment.prescription;
+  const patientName = appointment.familyMember
+    ? `${appointment.familyMember.fullName} (family)`
+    : appointment.patient.fullName;
+  const doctorName = `Dr. ${appointment.doctor.fullName}`;
+  const instructionsText = prescription?.instructions || 'No specific dietary instructions provided for this diagnosis.';
+
+  if (user.role === 'patient') {
+    if (!prescription) {
+      return (
+        <section className="patient-prescription-shell">
+          <header className="patient-prescription-topbar">
+            <div className="patient-prescription-brand">Digital Sanctuary</div>
+            <span className="material-symbols-outlined" aria-hidden="true">account_circle</span>
+          </header>
+
+          <main className="patient-prescription-main waiting">
+            <h1>Prescription Pending</h1>
+            <p>Your doctor has not issued a prescription yet for this appointment.</p>
+            <Link className="patient-prescription-primary-cta" to={`/appointments/${appointmentId}`}>
+              Back to Appointment Details
+            </Link>
+          </main>
+        </section>
+      );
+    }
+
+    return (
+      <section className="patient-prescription-shell">
+        <header className="patient-prescription-topbar">
+          <div className="patient-prescription-brand">Digital Sanctuary</div>
+          <button className="patient-prescription-icon" type="button" aria-label="Profile">
+            <span className="material-symbols-outlined" aria-hidden="true">account_circle</span>
+          </button>
+        </header>
+
+        <main className="patient-prescription-main">
+          <header className="patient-prescription-hero">
+            <h1>Prescription Ready.</h1>
+            <p>
+              Your consultation with {doctorName} is complete. Please share the code below with your pharmacist.
+            </p>
+          </header>
+
+          <section className="patient-prescription-handoff">
+            <span className="patient-prescription-label">Pharmacist Handoff Code</span>
+            <p className="patient-prescription-code">{data.handoffCode}</p>
+            <button type="button" onClick={copyHandoffCode}>
+              <span className="material-symbols-outlined" aria-hidden="true">qr_code_2</span>
+              {copyMessage}
+            </button>
+          </section>
+
+          <section className="patient-prescription-summary">
+            <h2>
+              <span className="material-symbols-outlined" aria-hidden="true">assignment</span>
+              Appointment Summary
+            </h2>
+            <div className="patient-prescription-summary-grid">
+              <article>
+                <small>Doctor</small>
+                <p>{doctorName}</p>
+              </article>
+              <article>
+                <small>Patient</small>
+                <p>{patientName}</p>
+              </article>
+              <article className="wide">
+                <small>Session ID</small>
+                <p className="mono">{appointment.id}</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="patient-prescription-diagnosis">
+            <small>Primary Diagnosis</small>
+            <div>
+              <span className="material-symbols-outlined" aria-hidden="true">healing</span>
+              <h2>{prescription.diagnosis}</h2>
+            </div>
+          </section>
+
+          <section className="patient-prescription-medications">
+            <h2>Prescribed Medications</h2>
+
+            {(prescription.items || []).map((item, idx) => (
+              <article key={`${item.name || 'Medication'}-${idx}`}>
+                <div className="icon">
+                  <span className="material-symbols-outlined" aria-hidden="true">medication</span>
+                </div>
+
+                <div className="content">
+                  <h3>{item.name || 'Medication'}</h3>
+                  <p>{item.dosage || 'Dosage not specified'}</p>
+
+                  <div className="meta-grid">
+                    <div>
+                      <small>Frequency</small>
+                      <strong>{item.frequency || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <small>Duration</small>
+                      <strong>{item.duration || 'N/A'}</strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            {(prescription.items || []).length === 0 ? (
+              <p className="muted">No medications listed.</p>
+            ) : null}
+          </section>
+
+          <section className="patient-prescription-instructions">
+            <h2>
+              <span className="material-symbols-outlined" aria-hidden="true">info</span>
+              Doctor's Instructions
+            </h2>
+            <p>{instructionsText}</p>
+          </section>
+
+          <div className="patient-prescription-actions">
+            <a href={`/api/prescriptions/${appointmentId}/pdf`} target="_blank" rel="noreferrer">
+              <span className="material-symbols-outlined" aria-hidden="true">download</span>
+              Download PDF Prescription
+            </a>
+            <small>Valid for 30 days from date of issue.</small>
+          </div>
+        </main>
+
+        <nav className="patient-prescription-bottom-nav" aria-label="Patient quick navigation">
+          <Link to="/dashboard">
+            <span className="material-symbols-outlined" aria-hidden="true">home_health</span>
+            <span>Home</span>
+          </Link>
+          <Link className="active" to="/appointments">
+            <span className="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            <span>Visits</span>
+          </Link>
+          <Link to="/appointments">
+            <span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+            <span>Messages</span>
+          </Link>
+          <Link to="/patients/workspace">
+            <span className="material-symbols-outlined" aria-hidden="true">contact_support</span>
+            <span>Help</span>
+          </Link>
+        </nav>
+      </section>
+    );
+  }
 
   return (
     <>
@@ -2875,29 +3042,26 @@ function PrescriptionPage() {
         <h2>Prescription</h2>
         {message ? <p className={message.toLowerCase().includes('unable') ? 'error' : 'success'}>{message}</p> : null}
         <p>
-          <strong>Appointment:</strong> {data.appointment.id}
+          <strong>Appointment:</strong> {appointment.id}
         </p>
         <p>
           <strong>Handoff code:</strong> <span className="pill">{data.handoffCode}</span>
         </p>
         <p>
-          <strong>Doctor:</strong> {data.appointment.doctor.fullName} | <strong>Patient:</strong>{' '}
-          {data.appointment.familyMember
-            ? `${data.appointment.familyMember.fullName} (family)`
-            : data.appointment.patient.fullName}
+          <strong>Doctor:</strong> {appointment.doctor.fullName} | <strong>Patient:</strong> {patientName}
         </p>
         <a className="btn subtle" href={`/api/prescriptions/${appointmentId}/pdf`} target="_blank" rel="noreferrer">
           Download PDF
         </a>
       </section>
 
-      {data.appointment.prescription ? (
+      {prescription ? (
         <section className="card">
           <h3>Current prescription</h3>
           <p>
-            <strong>Diagnosis:</strong> {data.appointment.prescription.diagnosis}
+            <strong>Diagnosis:</strong> {prescription.diagnosis}
           </p>
-          {(data.appointment.prescription.items || []).map((item, idx) => (
+          {(prescription.items || []).map((item, idx) => (
             <article className="list-item" key={`${item.name}-${idx}`}>
               <div>
                 <strong>
@@ -2910,14 +3074,14 @@ function PrescriptionPage() {
             </article>
           ))}
           <p>
-            <strong>Instructions:</strong> {data.appointment.prescription.instructions || 'N/A'}
+            <strong>Instructions:</strong> {prescription.instructions || 'N/A'}
           </p>
         </section>
       ) : null}
 
       {isDoctorOwner ? (
         <section className="card">
-          <h3>{data.appointment.prescription ? 'Edit' : 'Create'} prescription</h3>
+          <h3>{prescription ? 'Edit' : 'Create'} prescription</h3>
           <form className="stack" onSubmit={savePrescription}>
             <label>
               Diagnosis
