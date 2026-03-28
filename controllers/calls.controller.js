@@ -67,12 +67,6 @@ const callsController = {
       }
 
       const presence = getAppointmentPresence(appt);
-      if (!presence.canStartCall) {
-        return res.status(403).render('dashboard', {
-          user: req.user,
-          message: 'Both doctor and patient must be online to start the call.'
-        });
-      }
 
       await prisma.callSession.upsert({
         where: { appointmentId },
@@ -99,6 +93,7 @@ const callsController = {
       return res.render('call', {
         user: req.user,
         appointment: appt,
+        presence,
         history,
         socketToken,
         iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],

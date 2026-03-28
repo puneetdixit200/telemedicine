@@ -128,7 +128,7 @@ Current default is Azure-only uploads.
 
 1. `app.js`: app bootstrap, middleware, CSP, route mounting, server creation
 2. `routes/*`: route definitions by domain
-3. `controllers/*`: request handlers, rendering, business flow orchestration
+3. `controllers/*`: request handlers and business flow orchestration
 4. `models/db.js`: Prisma client instance
 5. `models/schemas/*`: Zod validation schemas
 6. `services/realtime.service.js`: Socket.IO setup and room signaling
@@ -136,19 +136,19 @@ Current default is Azure-only uploads.
 8. `services/presence.service.js`: online/presence helpers
 9. `middleware/auth.js`: auth, role checks, token handling
 10. `middleware/errors.js`: centralized error behavior
-11. `views/*`: EJS templates
-12. `public/*`: CSS, JS, and static assets
+11. `frontend/*`: React + Vite SPA source
+12. `public/*`: static assets and call runtime script
 
 ## Main Route Groups
 
-1. `/auth`: login, register, logout
-2. `/users`: profile, presence endpoints
-3. `/doctors`: listing, doctor details, slots, analytics
-4. `/patients`: health profile, workspace, family member management
-5. `/appointments`: booking, details, pre-consultation, close/cancel
-6. `/calls`: consultation pages and call session state
-7. `/prescriptions`: prescription create/view + PDF
-8. `/documents`: upload/download with ACL checks
+1. `/api/auth`: login, register, logout
+2. `/api/users`: profile, presence endpoints
+3. `/api/doctors`: listing, doctor details, slots, analytics
+4. `/api/patients`: health profile, workspace, family member management
+5. `/api/appointments`: booking, details, pre-consultation, close/cancel
+6. `/api/calls`: consultation pages and call session state
+7. `/api/prescriptions`: prescription create/view + PDF
+8. `/api/documents`: upload/download with ACL checks
 
 ## Data Model Summary
 
@@ -168,16 +168,10 @@ Enums include role, appointment status, slot status, consultation mode, and call
 
 ## Frontend and Styling
 
-1. Tailwind input file: `public/css/src/tailwind.input.css`
-2. Tailwind output file: `public/css/tailwind.css`
-3. Main custom style system: `public/css/styles.css`
-4. Shared layout shell: `views/partials/layout.ejs`
-
-## Translation
-
-1. Language selector in navbar
-2. Google Translate element integration in `public/js/translation.js`
-3. CSP configuration in `app.js` includes required translate domains
+1. React app entry: `frontend/index.html`
+2. React routes and pages: `frontend/src/App.jsx`
+3. Main SPA styles: `frontend/src/styles.css`
+4. API client helper: `frontend/src/lib/api.js`
 
 ## Project Structure
 
@@ -188,6 +182,9 @@ Enums include role, appointment status, slot status, consultation mode, and call
 |- docker-compose.yml
 |- run-app.bat
 |- azure-deploy.md
+|- frontend/
+|  |- index.html
+|  |- src/
 |- prisma/
 |  |- schema.prisma
 |  |- seed.js
@@ -207,7 +204,6 @@ Enums include role, appointment status, slot status, consultation mode, and call
 |  |- css/
 |  |- js/
 |  |- img/
-|- views/
 |- tests/
 |- uploads/
 ```
@@ -218,7 +214,7 @@ Run:
 
 `npm test`
 
-Current tests validate core route health and auth redirect behavior.
+Current tests validate API session/authorization behavior and SPA route fallback behavior.
 
 ## Deployment Notes
 

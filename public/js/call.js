@@ -51,6 +51,17 @@ function setStatus(s) {
   statusEl.textContent = s;
 }
 
+function setControlLabel(button, label) {
+  const labelNode = button ? button.querySelector('[data-label]') : null;
+  if (labelNode) {
+    labelNode.textContent = label;
+    return;
+  }
+  if (button) {
+    button.textContent = label;
+  }
+}
+
 function stopLocalMedia() {
   if (!localStream) return;
   localStream.getTracks().forEach((track) => {
@@ -363,7 +374,7 @@ btnMute.addEventListener('click', () => {
   localStream.getAudioTracks().forEach((t) => {
     t.enabled = !isMuted;
   });
-  btnMute.textContent = isMuted ? 'Unmute' : 'Mute';
+  setControlLabel(btnMute, isMuted ? 'Unmute' : 'Mute');
 });
 
 btnCamera.addEventListener('click', () => {
@@ -372,7 +383,7 @@ btnCamera.addEventListener('click', () => {
   localStream.getVideoTracks().forEach((t) => {
     t.enabled = !isCameraOff;
   });
-  btnCamera.textContent = isCameraOff ? 'Camera on' : 'Toggle camera';
+  setControlLabel(btnCamera, isCameraOff ? 'Camera on' : 'Camera');
 });
 
 chatForm.addEventListener('submit', (e) => {

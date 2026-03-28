@@ -11,4 +11,9 @@ const preconsultSchema = z.object({
   medicationsText: z.string().max(4000).optional().or(z.literal(''))
 });
 
-module.exports = { bookSchema, preconsultSchema };
+const reviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z.string().max(1000).optional().or(z.literal(''))
+});
+
+module.exports = { bookSchema, preconsultSchema, reviewSchema };

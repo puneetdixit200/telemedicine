@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -10,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 const { prisma } = require('./models/db');
 
 const { attachUser } = require('./middleware/auth');
+const { enableApiMode } = require('./middleware/api-mode');
 const { errorHandler, notFoundHandler } = require('./middleware/errors');
 const { initSocket } = require('./services/realtime.service');
 
@@ -25,8 +27,8 @@ const documentsRoutes = require('./routes/documents.routes');
 function createApp() {
   const app = express();
 
-  app.set('view engine', 'ejs');
-  app.set('views', path.join(__dirname, 'views'));
+  const frontendDistPath = path.join(__dirname, 'frontend', 'dist');
+  const frontendSourceIndexPath = path.join(__dirname, 'frontend', 'index.html');
 
   app.use(
     helmet({
@@ -69,19 +71,67 @@ function createApp() {
   // Attach logged-in user (if any) from JWT cookie.
   app.use(attachUser);
 
-  app.get('/', (req, res) => res.redirect('/dashboard'));
-  app.get('/dashboard', (req, res) => {
-    return res.render('dashboard', { user: req.user || null, message: null });
-  });
+  const apiRouter = express.Router();
+  apiRouter.use(enableApiMode);
 
-  app.use('/auth', authRoutes);
-  app.use('/users', usersRoutes);
-  app.use('/doctors', doctorsRoutes);
-  app.use('/patients', patientsRoutes);
-  app.use('/appointments', appointmentsRoutes);
-  app.use('/calls', callsRoutes);
-  app.use('/prescriptions', prescriptionsRoutes);
+  apiRouter.get('/session', (req, res) => res.json({ ok: true, user: req.user || null }));
+
+  apiRouter.use('/auth', authRoutes);
+  apiRouter.use('/users', usersRoutes);
+  apiRouter.use('/doctors', doctorsRoutes);
+  apiRouter.use('/patients', patientsRoutes);
+  apiRouter.use('/appointments', appointmentsRoutes);
+  apiRouter.use('/calls', callsRoutes);
+  apiRouter.use('/prescriptions', prescriptionsRoutes);
+  apiRouter.use('/documents', documentsRoutes);
+
+  app.use('/api', apiRouter);
+
+  // Keep non-API local download route support in case local-mode URLs are generated.
   app.use('/documents', documentsRoutes);
+
+  app.use(
+    express.static(frontendDistPath, {
+      setHeaders: (res, staticPath) => {
+        // Prevent stale hashed-asset references after rebuilds.
+        if (staticPath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-store');
+          return;
+        }
+
+        if (staticPath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    })
+  );
+
+  app.get('*', (req, res, next) => {
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/socket.io') ||
+      req.path.startsWith('/documents/') ||
+      req.path.startsWith('/assets/')
+    ) {
+      return next();
+    }
+
+    const distIndexPath = path.join(frontendDistPath, 'index.html');
+    if (fs.existsSync(distIndexPath)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.sendFile(distIndexPath);
+    }
+
+    // Test suite expects a simple SPA shell even without a production build.
+    if (process.env.NODE_ENV === 'test' && fs.existsSync(frontendSourceIndexPath)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.sendFile(frontendSourceIndexPath);
+    }
+
+    return res.status(503).json({
+      error: 'Frontend build not found. Run "npm run frontend:build" for port 3000, or use "npm run frontend:dev" on port 5173.'
+    });
+  });
 
   app.use(notFoundHandler);
   app.use(errorHandler);

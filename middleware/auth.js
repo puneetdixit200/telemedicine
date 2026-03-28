@@ -56,6 +56,7 @@ async function attachUser(req, res, next) {
 
 function authRequired(req, res, next) {
   if (req.user) return next();
+  if (req.isApi) return res.status(401).json({ error: 'Unauthorized' });
   if (req.accepts('html')) return res.redirect('/auth/login');
   return res.status(401).json({ error: 'Unauthorized' });
 }

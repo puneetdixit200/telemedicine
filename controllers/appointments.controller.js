@@ -1,18 +1,48 @@
 const { prisma } = require('../models/db');
-const { bookSchema, preconsultSchema } = require('../models/schemas/appointments.schemas');
+const { bookSchema, preconsultSchema, reviewSchema } = require('../models/schemas/appointments.schemas');
 const { getAppointmentPresence } = require('../services/presence.service');
 
+function isMissingDoctorReviewTable(error) {
+  return Boolean(
+    error &&
+      error.code === 'P2021' &&
+      String(error.meta?.table || '')
+        .toLowerCase()
+        .includes('doctorreview')
+  );
+}
+
 async function ensureAppointmentAccess(appointmentId, user) {
-  const appt = await prisma.appointment.findUnique({
-    where: { id: appointmentId },
-    include: {
-      doctor: { include: { doctorProfile: true } },
-      patient: { include: { patientProfile: true } },
-      familyMember: true,
-      documents: true,
-      prescription: true
+  let appt;
+  try {
+    appt = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        doctor: { include: { doctorProfile: true } },
+        patient: { include: { patientProfile: true } },
+        familyMember: true,
+        documents: true,
+        prescription: true,
+        review: true
+      }
+    });
+  } catch (error) {
+    if (!isMissingDoctorReviewTable(error)) throw error;
+    appt = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        doctor: { include: { doctorProfile: true } },
+        patient: { include: { patientProfile: true } },
+        familyMember: true,
+        documents: true,
+        prescription: true
+      }
+    });
+    if (appt) {
+      appt.review = null;
     }
-  });
+  }
+
   if (!appt) return null;
   if (user.role === 'admin') return appt;
   if (user.id !== appt.patientId && user.id !== appt.doctorId) return null;
@@ -150,17 +180,35 @@ const appointmentsController = {
             ? { patientId: req.user.id }
             : {};
 
-      const appointments = await prisma.appointment.findMany({
-        where,
-        include: {
-          doctor: { select: { id: true, fullName: true } },
-          patient: { select: { id: true, fullName: true } },
-          familyMember: { select: { id: true, fullName: true } },
-          prescription: { select: { id: true } }
-        },
-        orderBy: { startAt: 'desc' },
-        take: 300
-      });
+      let appointments;
+      try {
+        appointments = await prisma.appointment.findMany({
+          where,
+          include: {
+            doctor: { select: { id: true, fullName: true } },
+            patient: { select: { id: true, fullName: true } },
+            familyMember: { select: { id: true, fullName: true } },
+            prescription: { select: { id: true } },
+            review: { select: { id: true, rating: true } }
+          },
+          orderBy: { startAt: 'desc' },
+          take: 300
+        });
+      } catch (error) {
+        if (!isMissingDoctorReviewTable(error)) throw error;
+        const fallback = await prisma.appointment.findMany({
+          where,
+          include: {
+            doctor: { select: { id: true, fullName: true } },
+            patient: { select: { id: true, fullName: true } },
+            familyMember: { select: { id: true, fullName: true } },
+            prescription: { select: { id: true } }
+          },
+          orderBy: { startAt: 'desc' },
+          take: 300
+        });
+        appointments = fallback.map((appointment) => ({ ...appointment, review: null }));
+      }
 
       const now = new Date();
       const upcomingAppointments = appointments
@@ -305,25 +353,106 @@ const appointmentsController = {
         });
       }
 
-      const updated = await prisma.appointment.update({
-        where: { id: appointmentId },
-        data: {
-          problemDescription: parsed.data.problemDescription || null,
-          medicationsText: parsed.data.medicationsText || null
-        },
-        include: {
-          doctor: { include: { doctorProfile: true } },
-          patient: { include: { patientProfile: true } },
-          documents: true,
-          prescription: true
-        }
-      });
+      let updated;
+      try {
+        updated = await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            problemDescription: parsed.data.problemDescription || null,
+            medicationsText: parsed.data.medicationsText || null
+          },
+          include: {
+            doctor: { include: { doctorProfile: true } },
+            patient: { include: { patientProfile: true } },
+            documents: true,
+            prescription: true,
+            review: true
+          }
+        });
+      } catch (error) {
+        if (!isMissingDoctorReviewTable(error)) throw error;
+        updated = await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            problemDescription: parsed.data.problemDescription || null,
+            medicationsText: parsed.data.medicationsText || null
+          },
+          include: {
+            doctor: { include: { doctorProfile: true } },
+            patient: { include: { patientProfile: true } },
+            documents: true,
+            prescription: true
+          }
+        });
+        updated.review = null;
+      }
 
       const familyMembers = await prisma.familyMember.findMany({
         where: { ownerPatientId: req.user.id },
         orderBy: { fullName: 'asc' }
       });
       return renderAppointmentPage(res, req.user, updated, { familyMembers, message: 'Saved.' });
+    } catch (e) {
+      return next(e);
+    }
+  },
+
+  submitReview: async (req, res, next) => {
+    try {
+      const appointmentId = req.params.appointmentId;
+      const parsed = reviewSchema.safeParse(req.body);
+      const appt = await ensureAppointmentAccess(appointmentId, req.user);
+      if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
+
+      if (!parsed.success) {
+        res.status(400);
+        return renderAppointmentPage(res, req.user, appt, {
+          error: 'Please provide a valid rating between 1 and 5.'
+        });
+      }
+
+      if (req.user.id !== appt.patientId) {
+        res.status(403);
+        return renderAppointmentPage(res, req.user, appt, {
+          error: 'Only the patient can submit a doctor review.'
+        });
+      }
+
+      if (appt.status !== 'completed') {
+        res.status(409);
+        return renderAppointmentPage(res, req.user, appt, {
+          error: 'You can review a doctor only after the appointment is completed.'
+        });
+      }
+
+      const normalizedComment = parsed.data.comment ? parsed.data.comment.trim() : null;
+
+      try {
+        await prisma.doctorReview.upsert({
+          where: { appointmentId },
+          update: {
+            rating: parsed.data.rating,
+            comment: normalizedComment || null
+          },
+          create: {
+            appointmentId,
+            doctorId: appt.doctorId,
+            patientId: appt.patientId,
+            rating: parsed.data.rating,
+            comment: normalizedComment || null
+          }
+        });
+      } catch (error) {
+        if (!isMissingDoctorReviewTable(error)) throw error;
+        return renderAppointmentPage(res, req.user, appt, {
+          message: 'Review feature is temporarily unavailable. Please run the latest database migration.'
+        });
+      }
+
+      const refreshed = await ensureAppointmentAccess(appointmentId, req.user);
+      return renderAppointmentPage(res, req.user, refreshed, {
+        message: 'Thanks. Your review has been saved.'
+      });
     } catch (e) {
       return next(e);
     }
@@ -410,8 +539,16 @@ const appointmentsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Appointment not found' });
 
-      if (req.user.role !== 'admin' && req.user.id !== appt.doctorId) {
+      const isPatientOwner = req.user.role === 'patient' && req.user.id === appt.patientId;
+      const isDoctorOwner = req.user.id === appt.doctorId;
+      const isAdmin = req.user.role === 'admin';
+
+      if (!isAdmin && !isDoctorOwner && !isPatientOwner) {
         return res.status(403).render('dashboard', { user: req.user, message: 'Forbidden' });
+      }
+
+      if (isPatientOwner && appt.status !== 'booked') {
+        return res.status(409).render('dashboard', { user: req.user, message: 'Only booked appointments can be cancelled.' });
       }
 
       await prisma.$transaction(async (tx) => {

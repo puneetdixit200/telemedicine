@@ -9,34 +9,28 @@ describe('basic routes', () => {
     app = createApp();
   });
 
-  it('redirects / to /dashboard', async () => {
-    const res = await request(app).get('/');
-    expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('/dashboard');
+  it('returns session payload', async () => {
+    const res = await request(app).get('/api/session');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('ok', true);
+    expect(res.body).toHaveProperty('user', null);
   });
 
-  it('renders dashboard for anonymous user', async () => {
+  it('serves SPA entry for dashboard route', async () => {
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('<div id="root"></div>');
+  });
+
+  it('serves SPA entry for deep links', async () => {
     const res = await request(app).get('/dashboard');
     expect(res.status).toBe(200);
-    expect(res.text).toContain('Dashboard');
-    expect(res.text).toContain('login');
+    expect(res.text).toContain('<div id="root"></div>');
   });
 
-  it('renders login page', async () => {
-    const res = await request(app).get('/auth/login');
-    expect(res.status).toBe(200);
-    expect(res.text).toContain('Login');
-  });
-
-  it('renders register page', async () => {
-    const res = await request(app).get('/auth/register');
-    expect(res.status).toBe(200);
-    expect(res.text).toContain('Register');
-  });
-
-  it('redirects unauthorized users to login for protected pages', async () => {
-    const res = await request(app).get('/appointments');
-    expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('/auth/login');
+  it('returns 401 for protected API routes without auth', async () => {
+    const res = await request(app).get('/api/appointments');
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: 'Unauthorized' });
   });
 });
