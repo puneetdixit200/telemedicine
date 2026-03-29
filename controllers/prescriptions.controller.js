@@ -74,22 +74,21 @@ function parseHandoffFromNotes(notesValue) {
   };
 }
 
-function buildNotesWithHandoff(baseNotes, pharmacyName, pharmacyContact) {
-  const lines = [];
-  const clean = String(baseNotes || '').trim();
-  const pharmacy = String(pharmacyName || '').trim();
-  const contact = String(pharmacyContact || '').trim();
-
-  if (clean) lines.push(clean);
-  if (pharmacy) lines.push(`[PHARMACY] ${pharmacy}`);
-  if (contact) lines.push(`[PHARMACY_CONTACT] ${contact}`);
-
-  return lines.join('\n').trim() || null;
-}
-
 function buildHandoffCode(appointmentId) {
   const prefix = String(appointmentId || '').split('-')[0] || 'NA';
   return `RX-${prefix.toUpperCase()}`;
+}
+
+function resolvePrescriptionHandoff(prescription, appointmentId) {
+  const legacy = parseHandoffFromNotes(prescription?.notes || '');
+  const hasStructured = Boolean(prescription?.pharmacyName || prescription?.pharmacyContact || prescription?.handoffCode);
+
+  return {
+    pharmacyName: (prescription?.pharmacyName || legacy.pharmacyName || '').trim(),
+    pharmacyContact: (prescription?.pharmacyContact || legacy.pharmacyContact || '').trim(),
+    cleanNotes: hasStructured ? String(prescription?.notes || '').trim() : legacy.cleanNotes,
+    handoffCode: (prescription?.handoffCode || buildHandoffCode(appointmentId)).trim()
+  };
 }
 
 async function ensureAppointmentAccess(appointmentId, user) {
@@ -115,7 +114,7 @@ const prescriptionsController = {
       const appt = await ensureAppointmentAccess(appointmentId, req.user);
       if (!appt) return res.status(404).render('dashboard', { user: req.user, message: 'Not found' });
 
-      const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
+      const handoff = resolvePrescriptionHandoff(appt.prescription, appt.id);
       if (appt.prescription) {
         appt.prescription.notes = handoff.cleanNotes;
       }
@@ -124,7 +123,7 @@ const prescriptionsController = {
         user: req.user,
         appointment: appt,
         handoff,
-        handoffCode: buildHandoffCode(appt.id),
+        handoffCode: handoff.handoffCode,
         error: null,
         message: null
       });
@@ -152,12 +151,12 @@ const prescriptionsController = {
 
       const parsed = upsertSchema.safeParse(req.body);
       if (!parsed.success) {
-        const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
+        const handoff = resolvePrescriptionHandoff(appt.prescription, appt.id);
         return res.status(400).render('prescription', {
           user: req.user,
           appointment: appt,
           handoff,
-          handoffCode: buildHandoffCode(appt.id),
+          handoffCode: handoff.handoffCode,
           error: 'Invalid inputs (diagnosis + at least one medication line required).',
           message: null
         });
@@ -168,18 +167,17 @@ const prescriptionsController = {
         items = parseItems(parsed.data.itemsText);
       }
       if (items.length === 0) {
-        const handoff = parseHandoffFromNotes(appt.prescription?.notes || '');
+        const handoff = resolvePrescriptionHandoff(appt.prescription, appt.id);
         return res.status(400).render('prescription', {
           user: req.user,
           appointment: appt,
           handoff,
-          handoffCode: buildHandoffCode(appt.id),
+          handoffCode: handoff.handoffCode,
           error: 'Add at least one medication with name/dosage/frequency/duration.',
           message: null
         });
       }
-
-      const notesWithHandoff = buildNotesWithHandoff(parsed.data.notes, parsed.data.pharmacyName, parsed.data.pharmacyContact);
+      const handoffCode = buildHandoffCode(appointmentId);
 
       await prisma.prescription.upsert({
         where: { appointmentId },
@@ -188,7 +186,10 @@ const prescriptionsController = {
           items,
           instructions: parsed.data.instructions || null,
           followUpAt: parsed.data.followUpAt ? new Date(parsed.data.followUpAt) : null,
-          notes: notesWithHandoff
+          notes: parsed.data.notes || null,
+          pharmacyName: parsed.data.pharmacyName || null,
+          pharmacyContact: parsed.data.pharmacyContact || null,
+          handoffCode
         },
         create: {
           appointmentId,
@@ -196,14 +197,17 @@ const prescriptionsController = {
           items,
           instructions: parsed.data.instructions || null,
           followUpAt: parsed.data.followUpAt ? new Date(parsed.data.followUpAt) : null,
-          notes: notesWithHandoff
+          notes: parsed.data.notes || null,
+          pharmacyName: parsed.data.pharmacyName || null,
+          pharmacyContact: parsed.data.pharmacyContact || null,
+          handoffCode
         }
       });
 
       await prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'completed' } });
 
       const refreshed = await ensureAppointmentAccess(appointmentId, req.user);
-      const handoff = parseHandoffFromNotes(refreshed?.prescription?.notes || '');
+      const handoff = resolvePrescriptionHandoff(refreshed?.prescription, appointmentId);
       if (refreshed && refreshed.prescription) {
         refreshed.prescription.notes = handoff.cleanNotes;
       }
@@ -211,7 +215,7 @@ const prescriptionsController = {
         user: req.user,
         appointment: refreshed,
         handoff,
-        handoffCode: buildHandoffCode(appointmentId),
+        handoffCode: handoff.handoffCode,
         error: null,
         message: 'Saved.'
       });
@@ -264,9 +268,9 @@ const prescriptionsController = {
         doc.fontSize(12).text(`Follow-up: ${new Date(appt.prescription.followUpAt).toISOString().slice(0, 10)}`);
       }
 
-      const handoff = parseHandoffFromNotes(appt.prescription.notes || '');
+      const handoff = resolvePrescriptionHandoff(appt.prescription, appt.id);
       doc.moveDown();
-      doc.fontSize(12).text(`Handoff code: ${buildHandoffCode(appt.id)}`);
+      doc.fontSize(12).text(`Handoff code: ${handoff.handoffCode}`);
       if (handoff.pharmacyName) {
         doc.fontSize(12).text(`Preferred pharmacy: ${handoff.pharmacyName}`);
       }

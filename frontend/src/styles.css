@@ -14,6 +14,11 @@
   --line: #d1d5db;
   --danger: #b91c1c;
   --success: #0f766e;
+  --compass-primary: #0d9488;
+  --compass-accent: #f59e0b;
+  --compass-surface: #ffffff;
+  --compass-bg: #f9fafb;
+  --compass-text: #1f2937;
 }
 
 * {
@@ -25,7 +30,7 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
-  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Nunito', 'Segoe UI', Tahoma, sans-serif;
   font-size: 18px;
   line-height: 1.45;
   color: var(--text);
@@ -58,6 +63,455 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+.compass-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.compass-hero {
+  border: 1px solid rgba(13, 148, 136, 0.23);
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, rgba(248, 255, 252, 0.94), rgba(255, 249, 238, 0.94));
+  padding: 1.05rem;
+}
+
+.compass-hero h2 {
+  margin-top: 0.35rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.compass-hero p {
+  margin-top: 0.45rem;
+  color: #3d4a4e;
+}
+
+.compass-two-col,
+.compass-metric-grid,
+.compass-inline-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compass-inline-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compass-card {
+  border: 1px solid rgba(13, 148, 136, 0.16);
+  border-radius: 1.4rem;
+  background: var(--compass-surface);
+  padding: 0.95rem;
+  box-shadow: 0 12px 30px rgba(31, 41, 55, 0.08);
+}
+
+.compass-card h3 {
+  margin-bottom: 0.65rem;
+  color: #0b6059;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.compass-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compass-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.compass-form input,
+.compass-form select,
+.compass-form textarea {
+  min-height: 60px;
+  border-radius: 1rem;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1rem;
+  padding: 0.62rem 0.7rem;
+  font-family: inherit;
+}
+
+.compass-form textarea {
+  min-height: 130px;
+}
+
+.ai-copilot-shell {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.ai-copilot-hero {
+  border: 1px solid rgba(13, 148, 136, 0.24);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 95% 4%, rgba(245, 158, 11, 0.24), transparent 26%),
+    linear-gradient(145deg, rgba(233, 249, 247, 0.96), rgba(254, 249, 239, 0.96));
+  padding: 1rem;
+  box-shadow: 0 20px 34px rgba(17, 24, 39, 0.08);
+}
+
+.ai-copilot-hero h2 {
+  margin: 0.35rem 0;
+}
+
+.ai-copilot-hero p {
+  margin: 0;
+  color: #42535a;
+}
+
+.ai-copilot-hero-meta {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ai-result-box {
+  margin-top: 0.65rem;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(242, 255, 252, 0.95), rgba(255, 255, 255, 0.96));
+  padding: 0.68rem;
+  animation: aiResultIn 280ms ease;
+}
+
+.ai-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-result-box pre {
+  margin: 0;
+  background: #f7faf9;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 0.8rem;
+  padding: 0.6rem;
+  max-height: 360px;
+  overflow: auto;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+@keyframes aiResultIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.compass-form input:focus,
+.compass-form select:focus,
+.compass-form textarea:focus {
+  outline: 3px solid rgba(245, 158, 11, 0.28);
+  border-color: #f59e0b;
+}
+
+.compass-action-btn,
+.compass-link-btn,
+.compass-toggle-btn {
+  min-height: 60px;
+  border-radius: 1rem;
+  border: 0;
+  background: var(--compass-accent);
+  color: #111827;
+  font-weight: 800;
+  font-size: 0.98rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.95rem;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+  box-shadow: 0 12px 24px rgba(245, 158, 11, 0.32);
+}
+
+.compass-action-btn:hover,
+.compass-link-btn:hover,
+.compass-toggle-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+  filter: saturate(1.08);
+  text-decoration: none;
+}
+
+.compass-action-btn:active,
+.compass-link-btn:active,
+.compass-toggle-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.compass-action-btn.small,
+.compass-link-btn,
+.compass-toggle-btn {
+  min-height: 60px;
+}
+
+.compass-action-btn.subtle,
+.compass-toggle-btn {
+  background: #e8fbf8;
+  color: #0f766e;
+  border: 1px solid rgba(13, 148, 136, 0.24);
+  box-shadow: none;
+}
+
+.compass-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.compass-row {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 1.15rem;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.7rem;
+  padding: 0.72rem;
+}
+
+.compass-row-main h4 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.compass-row-main p {
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.compass-row-actions {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+  justify-items: end;
+}
+
+.compass-status-pill,
+.compass-presence {
+  border-radius: 999px;
+  padding: 0.38rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.compass-status-pill.scheduled,
+.compass-status-pill.waiting_doctor,
+.compass-status-pill.waiting_patient {
+  background: #fff8eb;
+  color: #92400e;
+}
+
+.compass-status-pill.sent,
+.compass-status-pill.closed {
+  background: #e6fbf7;
+  color: #0f766e;
+}
+
+.compass-status-pill.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.compass-status-pill.skipped,
+.compass-status-pill.open {
+  background: #eef2ff;
+  color: #1e3a8a;
+}
+
+.compass-presence {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.compass-presence.online {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.compass-presence.offline {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.compass-metric-card {
+  border-radius: 1.2rem;
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  background: #ffffff;
+  min-height: 124px;
+  padding: 0.85rem;
+  display: grid;
+  align-content: space-between;
+}
+
+.compass-metric-card h3 {
+  color: #0f766e;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.compass-metric-card strong {
+  font-size: clamp(1.55rem, 2vw, 2.3rem);
+  line-height: 1;
+}
+
+.compass-metric-card.accent {
+  border-color: rgba(245, 158, 11, 0.44);
+  background: linear-gradient(160deg, #fffaf1, #ffffff);
+}
+
+.compass-chat-thread {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 460px;
+  overflow: auto;
+}
+
+.compass-chat-bubble {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 1rem;
+  padding: 0.6rem 0.7rem;
+  background: #f8fafc;
+}
+
+.compass-chat-bubble.mine {
+  border-color: rgba(13, 148, 136, 0.24);
+  background: #eafcf7;
+}
+
+.compass-chat-meta {
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.compass-inline-status {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.compass-close-stack {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.rural-connectivity-banner {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 120;
+  min-height: 3rem;
+  max-width: min(90vw, 420px);
+  border-radius: 0.95rem;
+  border: 1px solid rgba(188, 201, 198, 0.45);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 16px 32px rgba(25, 28, 29, 0.14);
+  padding: 0.55rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rural-connectivity-banner p {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #2f3a38;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.rural-connectivity-banner.offline {
+  border-color: rgba(185, 28, 28, 0.25);
+  background: rgba(255, 241, 241, 0.95);
+}
+
+.rural-connectivity-banner button {
+  border: 1px solid rgba(188, 201, 198, 0.5);
+  background: #f3f4f5;
+  color: #134e4a;
+  border-radius: 0.75rem;
+  min-height: 2.2rem;
+  padding: 0 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.translation-service-dock {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 119;
+  min-height: 2.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(188, 201, 198, 0.45);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 14px 24px rgba(25, 28, 29, 0.12);
+  padding: 0.35rem 0.5rem;
+  display: grid;
+  align-items: center;
+}
+
+.translation-service-dock .gtranslate_wrapper {
+  min-width: 170px;
+}
+
+.translation-service-dock select {
+  width: 100%;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(188, 201, 198, 0.65);
+  background: #ffffff;
+  color: #1f2937;
+  min-height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+body.rural-data-saver * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+body.rural-data-saver .auth-login-showcase,
+body.rural-data-saver .auth-register-shell::before {
+  display: none !important;
+}
+
+body.rural-data-saver .sanctuary-action,
+body.rural-data-saver .journey-editorial-card,
+body.rural-data-saver .call-video-stage,
+body.rural-data-saver .consult-stage {
+  box-shadow: none !important;
 }
 
 h1,
@@ -3805,6 +4259,57 @@ textarea {
   padding: 0.55rem 0.6rem;
 }
 
+.call-chat-tools {
+  border: 1px solid rgba(188, 201, 198, 0.62);
+  border-radius: 0.92rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.58rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.call-chat-tools > label {
+  color: #2f4a46;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.call-chat-tools-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.42rem;
+}
+
+.call-chat-tools-row select {
+  min-height: 44px;
+  border-radius: 0.85rem;
+  border: 1px solid #d4dedc;
+  background: #ffffff;
+  color: #2f3d3a;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.call-ai-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 0.85rem;
+  background: #eefaf8;
+  border: 1px solid #b8ddd6;
+  color: #0b6a61;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.call-ai-link:hover {
+  text-decoration: none;
+  background: #e1f6f2;
+}
+
 .call-chat-log {
   min-height: 320px;
   max-height: 60vh;
@@ -3892,6 +4397,14 @@ textarea {
 
 .call-control-btn .material-symbols-outlined {
   font-size: 1.26rem;
+}
+
+.call-control-btn.compact {
+  min-height: 44px;
+  min-width: 150px;
+  flex-direction: row;
+  gap: 0.35rem;
+  padding-inline: 0.7rem;
 }
 
 .call-end-btn {
@@ -4470,6 +4983,10 @@ textarea {
   .call-controls {
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  .call-chat-tools-row {
+    grid-template-columns: 1fr;
   }
 
   .call-controls-group {
@@ -5175,6 +5692,10 @@ textarea {
     padding: 0.4rem 0.55rem;
   }
 
+  .call-control-btn.compact {
+    min-width: 100%;
+  }
+
   .call-end-btn {
     width: 100%;
     justify-content: center;
@@ -5378,6 +5899,39 @@ textarea {
   .auth-register-main {
     margin-top: 1.4rem;
     margin-bottom: 0.8rem;
+  }
+
+  .rural-connectivity-banner {
+    right: 0.55rem;
+    left: 0.55rem;
+    bottom: 0.5rem;
+    max-width: none;
+  }
+
+  .translation-service-dock {
+    left: 0.55rem;
+    bottom: 4.4rem;
+  }
+
+  .translation-service-dock .gtranslate_wrapper {
+    min-width: 140px;
+  }
+
+  .compass-two-col,
+  .compass-metric-grid,
+  .compass-inline-grid,
+  .compass-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compass-row-actions {
+    justify-items: stretch;
+  }
+
+  .compass-link-btn,
+  .compass-toggle-btn,
+  .compass-action-btn {
+    width: 100%;
   }
 
   .auth-register-hero h1 {

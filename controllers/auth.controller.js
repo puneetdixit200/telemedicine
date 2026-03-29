@@ -3,6 +3,12 @@ const { prisma } = require('../models/db');
 const { loginSchema, registerSchema } = require('../models/schemas/auth.schemas');
 const { signToken, setAuthCookie } = require('../middleware/auth');
 
+function normalizePhone(value) {
+  return String(value || '')
+    .replace(/[^0-9]/g, '')
+    .trim();
+}
+
 const authController = {
   viewLogin: (req, res) => res.render('login', { user: req.user || null, error: null }),
   viewRegister: (req, res) => res.render('register', { user: req.user || null, error: null }),
@@ -45,6 +51,19 @@ const authController = {
         return res.status(400).render('register', { user: null, error: 'Doctor specialization is required.' });
       }
 
+      if (data.role === 'help_worker') {
+        const normalizedPhone = normalizePhone(data.phone);
+        if (!normalizedPhone) {
+          return res.status(400).render('register', { user: null, error: 'Help worker phone number is required.' });
+        }
+        if (!String(data.address || '').trim()) {
+          return res.status(400).render('register', { user: null, error: 'Service area or address is required for help worker accounts.' });
+        }
+        if (!String(data.language || '').trim()) {
+          return res.status(400).render('register', { user: null, error: 'Preferred language is required for help worker accounts.' });
+        }
+      }
+
       const existing = await prisma.user.findUnique({ where: { email: data.email } });
       if (existing) return res.status(409).render('register', { user: null, error: 'Email already registered.' });
 
@@ -53,7 +72,7 @@ const authController = {
       const created = await prisma.user.create({
         data: {
           email: data.email,
-          phone: data.phone || null,
+          phone: normalizePhone(data.phone) || null,
           fullName: data.fullName,
           passwordHash,
           role: data.role,

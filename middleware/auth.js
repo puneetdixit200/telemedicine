@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../models/db');
 const { isRecentlyOnline } = require('../services/presence.service');
+const { sendApiError } = require('./api-response');
 
 function signToken(user) {
   const payload = { sub: user.id, role: user.role };
@@ -56,15 +57,15 @@ async function attachUser(req, res, next) {
 
 function authRequired(req, res, next) {
   if (req.user) return next();
-  if (req.isApi) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.isApi) return sendApiError(req, res, 401, 'Unauthorized', 'UNAUTHORIZED');
   if (req.accepts('html')) return res.redirect('/auth/login');
-  return res.status(401).json({ error: 'Unauthorized' });
+  return sendApiError(req, res, 401, 'Unauthorized', 'UNAUTHORIZED');
 }
 
 function roleRequired(...roles) {
   return (req, res, next) => {
     if (!req.user) return authRequired(req, res, next);
-    if (!roles.includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+    if (!roles.includes(req.user.role)) return sendApiError(req, res, 403, 'Forbidden', 'FORBIDDEN');
     return next();
   };
 }

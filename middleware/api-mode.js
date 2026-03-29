@@ -1,6 +1,8 @@
+const API_PATH_RE = /^\/api(?:\/v\d+)?(?:\/|$)/i;
+
 function isApiPath(req) {
   const originalUrl = String(req.originalUrl || '');
-  return originalUrl === '/api' || originalUrl.startsWith('/api/');
+  return API_PATH_RE.test(originalUrl);
 }
 
 function enableApiMode(req, res, next) {

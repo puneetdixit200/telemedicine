@@ -10,8 +10,10 @@ import {
   useParams
 } from 'react-router-dom';
 import { apiRequest, utcDateTime } from './lib/api';
+import TranslationService from './TranslationService';
 
 const SessionContext = createContext(null);
+const AI_OFFLINE_DRAFTS_KEY = 'ai:offline-drafts:v1';
 
 function useSession() {
   const value = useContext(SessionContext);
@@ -84,29 +86,264 @@ function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+        <Route path="/help-center" element={<HelpCenterPage />} />
 
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/book" element={<BookingWizardPage />} />
+          <Route path="/book" element={user?.role === 'patient' ? <BookingWizardPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/medicines" element={user?.role === 'patient' ? <MedicineCabinetPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users/me" element={<ProfilePage />} />
           <Route path="/doctors" element={<DoctorsPage />} />
           <Route path="/doctors/:doctorId" element={<DoctorDetailPage />} />
-          <Route path="/doctors/me/slots" element={<DoctorSlotsPage />} />
-          <Route path="/doctors/me/analytics" element={<DoctorAnalyticsPage />} />
+          <Route path="/doctors/me/slots" element={user?.role === 'doctor' ? <DoctorSlotsPage /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/doctors/me/analytics" element={user?.role === 'doctor' ? <DoctorAnalyticsPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/appointments" element={<AppointmentsPage />} />
           <Route path="/appointments/impact" element={<ImpactPage />} />
           <Route path="/appointments/:appointmentId" element={<AppointmentDetailPage />} />
+          <Route path="/reminders" element={<RemindersPage />} />
+          <Route path="/ai-copilot" element={<AICopilotPage />} />
+          <Route
+            path="/support/consents"
+            element={user?.role === 'patient' || user?.role === 'help_worker' ? <CareSupportPage /> : <Navigate to="/dashboard" replace />}
+          />
+          <Route path="/async-consults" element={<AsyncConsultsPage />} />
+          <Route path="/async-consults/:consultId" element={<AsyncConsultDetailPage />} />
           <Route path="/calls/:appointmentId" element={<CallPage />} />
           <Route path="/prescriptions/:appointmentId" element={<PrescriptionPage />} />
-          <Route path="/patients/workspace" element={<PatientWorkspacePage />} />
+          <Route path="/patients/workspace" element={user?.role === 'patient' ? <PatientWorkspacePage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/patients/me" element={<PatientHealthPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <RuralSupportLayer />
     </SessionContext.Provider>
+  );
+}
+
+function LegalPage({ title, updatedAt, intro, sections }) {
+  const { user } = useSession();
+
+  return (
+    <section className="stack">
+      <article className="card">
+        <p className="kicker">Legal & Support</p>
+        <h2>{title}</h2>
+        <p className="muted">Last updated: {updatedAt}</p>
+        <p>{intro}</p>
+      </article>
+
+      {sections.map((section) => (
+        <article className="card" key={section.heading}>
+          <h3>{section.heading}</h3>
+          {section.body.map((line, idx) => (
+            <p key={`${section.heading}-${idx}`} className="muted">{line}</p>
+          ))}
+        </article>
+      ))}
+
+      <article className="card row-inline">
+        <Link className="btn subtle" to={user ? '/dashboard' : '/auth/login'}>
+          {user ? 'Back to Dashboard' : 'Back to Login'}
+        </Link>
+        <Link className="btn subtle" to="/auth/register">
+          Create Account
+        </Link>
+      </article>
+    </section>
+  );
+}
+
+function PrivacyPolicyPage() {
+  const sections = [
+    {
+      heading: 'Information We Collect',
+      body: [
+        'We collect profile details such as name, email, phone number, and account role to provide telemedicine access.',
+        'We also store appointment details, consultation messages, reminders, and documents you upload for clinical workflows.'
+      ]
+    },
+    {
+      heading: 'How We Use Information',
+      body: [
+        'Your information is used to schedule visits, support doctor-patient communication, and maintain care history.',
+        'Operational data may be used to improve reliability, network fallback behavior, and user safety alerts.'
+      ]
+    },
+    {
+      heading: 'Data Sharing and Access',
+      body: [
+        'Access is role-based: patients, doctors, admins, and delegated help workers see only permitted records.',
+        'Delegated helper access requires active patient consent and can be revoked by the patient at any time.'
+      ]
+    },
+    {
+      heading: 'Your Choices',
+      body: [
+        'You can update your profile details and control communication preferences in your account.',
+        'For account deletion or data requests, contact support through the Help Center page.'
+      ]
+    }
+  ];
+
+  return (
+    <LegalPage
+      title="Privacy Policy"
+      updatedAt="March 29, 2026"
+      intro="This policy explains how Telemedicine Hub handles personal and care-related information."
+      sections={sections}
+    />
+  );
+}
+
+function TermsOfServicePage() {
+  const sections = [
+    {
+      heading: 'Service Scope',
+      body: [
+        'Telemedicine Hub provides remote consultation tools, appointment coordination, reminders, and records support.',
+        'Emergency medical conditions should be directed to local emergency services immediately.'
+      ]
+    },
+    {
+      heading: 'Account Responsibilities',
+      body: [
+        'You are responsible for keeping your login credentials secure and for activity under your account.',
+        'You must provide accurate profile and health context information for safe care decisions.'
+      ]
+    },
+    {
+      heading: 'Acceptable Use',
+      body: [
+        'Do not misuse the platform, impersonate other users, or attempt unauthorized data access.',
+        'Platform abuse may result in account suspension or termination.'
+      ]
+    },
+    {
+      heading: 'Availability and Changes',
+      body: [
+        'Features may evolve over time to improve care quality and network resilience.',
+        'Continued use of the platform after updates implies acceptance of revised terms.'
+      ]
+    }
+  ];
+
+  return (
+    <LegalPage
+      title="Terms of Service"
+      updatedAt="March 29, 2026"
+      intro="These terms govern your use of Telemedicine Hub services and account access."
+      sections={sections}
+    />
+  );
+}
+
+function HelpCenterPage() {
+  const sections = [
+    {
+      heading: 'Common Support Topics',
+      body: [
+        'Login issues: verify email/password and reset credentials if needed.',
+        'Call quality issues: use the in-call Data Quality button to switch between Auto, Saver, and High modes.',
+        'Delegated helper access: ensure patient consent is active and linked to the helper phone number.'
+      ]
+    },
+    {
+      heading: 'Connectivity Tips',
+      body: [
+        'If your connection is weak, switch to Audio or Text mode from call controls.',
+        'Enable Data Saver to reduce bandwidth use during low-connectivity periods.'
+      ]
+    },
+    {
+      heading: 'Contact Support',
+      body: [
+        'Email: support@telemedicinehub.local',
+        'Hours: Monday to Saturday, 08:00 to 20:00 local time.',
+        'For urgent medical emergencies, contact local emergency responders.'
+      ]
+    }
+  ];
+
+  return (
+    <LegalPage
+      title="Help Center"
+      updatedAt="March 29, 2026"
+      intro="Find quick fixes, guidance, and support contacts for your telemedicine journey."
+      sections={sections}
+    />
+  );
+}
+
+function RuralSupportLayer() {
+  const location = useLocation();
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [networkType, setNetworkType] = useState(() => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return connection?.effectiveType || 'unknown';
+  });
+  const [isDataSaver, setIsDataSaver] = useState(() => {
+    try {
+      return window.localStorage.getItem('rural:dataSaver') === '1';
+    } catch (_err) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+    const updateNetwork = () => {
+      setIsOnline(navigator.onLine);
+      setNetworkType(connection?.effectiveType || 'unknown');
+    };
+
+    window.addEventListener('online', updateNetwork);
+    window.addEventListener('offline', updateNetwork);
+    connection?.addEventListener?.('change', updateNetwork);
+
+    return () => {
+      window.removeEventListener('online', updateNetwork);
+      window.removeEventListener('offline', updateNetwork);
+      connection?.removeEventListener?.('change', updateNetwork);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('rural:dataSaver', isDataSaver ? '1' : '0');
+    } catch (_err) {}
+
+    document.body.classList.toggle('rural-data-saver', isDataSaver);
+  }, [isDataSaver]);
+
+  const isCallRoute = /^\/calls\/[^/]+$/.test(location.pathname);
+  const networkLabel = isOnline ? `Network: ${networkType}` : 'Offline mode enabled';
+
+  return (
+    <>
+      {!isCallRoute ? (
+        <aside className={`rural-connectivity-banner ${isOnline ? 'online' : 'offline'}`} aria-live="polite">
+          <p>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {isOnline ? 'network_wifi' : 'wifi_off'}
+            </span>
+            {networkLabel}
+          </p>
+          <button type="button" onClick={() => setIsDataSaver((prev) => !prev)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {isDataSaver ? 'speed_0_5x' : 'speed'}
+            </span>
+            {isDataSaver ? 'Data Saver ON' : 'Data Saver OFF'}
+          </button>
+        </aside>
+      ) : null}
+
+      <TranslationService />
+    </>
   );
 }
 
@@ -123,6 +360,9 @@ function ProtectedLayout() {
 
   const userInitial = String(user.fullName || 'U').slice(0, 1).toUpperCase();
   const isCallRoute = /^\/calls\/[^/]+$/.test(location.pathname);
+  const isDoctor = user.role === 'doctor';
+  const isPatient = user.role === 'patient';
+  const isHelper = user.role === 'help_worker';
 
   const onLogout = async () => {
     await apiRequest('/api/auth/logout', { method: 'POST' });
@@ -180,7 +420,7 @@ function ProtectedLayout() {
           <Link className="nav-btn" to="/dashboard">
             Home
           </Link>
-          {user.role !== 'doctor' ? (
+          {isPatient ? (
             <Link className="nav-btn" to="/book">
               Book Visit
             </Link>
@@ -188,24 +428,38 @@ function ProtectedLayout() {
           <Link className="nav-btn" to="/appointments">
             Appointments
           </Link>
-          {user.role !== 'doctor' ? (
+          <Link className="nav-btn" to="/async-consults">
+            {isDoctor ? 'Async Queue' : isHelper ? 'Delegated Async' : 'Async Consult'}
+          </Link>
+          <Link className="nav-btn" to="/reminders">
+            Reminders
+          </Link>
+          <Link className="nav-btn" to="/ai-copilot">
+            AI Copilot
+          </Link>
+          {isPatient ? (
             <Link className="nav-btn" to="/doctors">
               Doctors
             </Link>
           ) : null}
-          {user.role === 'doctor' ? (
+          {isDoctor ? (
             <Link className="nav-btn" to="/doctors/me/slots">
               My Slots
             </Link>
           ) : null}
-          {user.role === 'doctor' ? (
+          {isDoctor ? (
             <Link className="nav-btn" to="/doctors/me/analytics">
               Analytics
             </Link>
           ) : null}
-          {user.role === 'patient' ? (
+          {isPatient ? (
             <Link className="nav-btn" to="/patients/workspace">
               Family &amp; Records
+            </Link>
+          ) : null}
+          {isPatient || isHelper ? (
+            <Link className="nav-btn" to="/support/consents">
+              {isHelper ? 'Delegated Support' : 'Care Support'}
             </Link>
           ) : null}
         </div>
@@ -474,21 +728,20 @@ function LoginPage() {
 
           <footer className="auth-login-footer">
             <div className="auth-footer-links">
-              <a href="#" onClick={(event) => event.preventDefault()}>Privacy Policy</a>
-              <a href="#" onClick={(event) => event.preventDefault()}>Terms of Service</a>
-              <a href="#" onClick={(event) => event.preventDefault()}>Security Standards</a>
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/terms-of-service">Terms of Service</Link>
+              <Link to="/help-center">Help Center</Link>
             </div>
-            <p>© 2024 The Guided Journey Telemedicine. All rights reserved.</p>
           </footer>
         </section>
       </main>
 
-      <button className="auth-help-fab" type="button">
+      <Link className="auth-help-fab" to="/help-center">
         <span>Need help?</span>
         <span className="auth-help-icon">
           <span className="material-symbols-outlined" aria-hidden="true">support_agent</span>
         </span>
-      </button>
+      </Link>
     </div>
   );
 }
@@ -593,6 +846,7 @@ function RegisterPage() {
                   value={form.phone}
                   onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
                   placeholder="(555) 000-0000"
+                  required={form.role === 'help_worker'}
                 />
               </label>
               <label>
@@ -611,6 +865,7 @@ function RegisterPage() {
                 <select value={form.role} onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}>
                   <option value="patient">Patient</option>
                   <option value="doctor">Doctor</option>
+                  <option value="help_worker">Help Worker</option>
                   <option value="admin">Admin</option>
                 </select>
               </label>
@@ -642,6 +897,7 @@ function RegisterPage() {
                 <input
                   value={form.address}
                   onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                  required={form.role === 'help_worker'}
                 />
               </label>
               <label>
@@ -649,6 +905,7 @@ function RegisterPage() {
                 <input
                   value={form.language}
                   onChange={(e) => setForm((prev) => ({ ...prev, language: e.target.value }))}
+                  required={form.role === 'help_worker'}
                 />
               </label>
               <label>
@@ -713,6 +970,13 @@ function RegisterPage() {
               </div>
             ) : null}
 
+            {form.role === 'help_worker' ? (
+              <div className="auth-doctor-section">
+                <h3>Help Worker Details</h3>
+                <p className="muted">Phone, address, and language are required so patients can link consent records to your helper account.</p>
+              </div>
+            ) : null}
+
             <button className="auth-register-submit" type="submit" disabled={busy}>
               {busy ? 'Creating account...' : 'Create account'}
               <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
@@ -730,7 +994,7 @@ function RegisterPage() {
             <span className="material-symbols-outlined" aria-hidden="true">verified_user</span>
             <div>
               <h3>Secure Data</h3>
-              <p>HIPAA compliant protection</p>
+              <p>Protected patient information</p>
             </div>
           </article>
           <article>
@@ -744,13 +1008,12 @@ function RegisterPage() {
       </main>
 
       <footer className="auth-register-footer">
-        <p>© 2024 The Guided Journey. All rights reserved.</p>
         <div>
-          <a href="#" onClick={(event) => event.preventDefault()}>Privacy Policy</a>
+          <Link to="/privacy-policy">Privacy Policy</Link>
           <span>•</span>
-          <a href="#" onClick={(event) => event.preventDefault()}>Terms of Service</a>
+          <Link to="/terms-of-service">Terms of Service</Link>
           <span>•</span>
-          <a href="#" onClick={(event) => event.preventDefault()}>Help Center</a>
+          <Link to="/help-center">Help Center</Link>
         </div>
       </footer>
     </div>
@@ -762,6 +1025,9 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const isDoctor = user.role === 'doctor';
+  const isPatient = user.role === 'patient';
+  const isHelper = user.role === 'help_worker';
 
   const handleSeeDoctorNow = async () => {
     setBusy(true);
@@ -800,7 +1066,7 @@ function DashboardPage() {
       {message ? <p className="sanctuary-status-note">{message}</p> : null}
 
       <div className="sanctuary-grid" role="list" aria-label="Dashboard actions">
-        {user.role !== 'doctor' ? (
+        {isPatient ? (
           <button
             type="button"
             className="sanctuary-action sanctuary-action-urgent"
@@ -818,7 +1084,7 @@ function DashboardPage() {
               <span>Immediate care for urgent health concerns.</span>
             </span>
           </button>
-        ) : (
+        ) : isDoctor ? (
           <Link className="sanctuary-action sanctuary-action-urgent" to="/appointments">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               medical_services
@@ -831,9 +1097,35 @@ function DashboardPage() {
               <span>Open your consultation queue and current sessions.</span>
             </span>
           </Link>
+        ) : isHelper ? (
+          <Link className="sanctuary-action sanctuary-action-urgent" to="/support/consents">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              volunteer_activism
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">handshake</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Consent Dashboard</strong>
+              <span>Review active delegations linked to your helper profile.</span>
+            </span>
+          </Link>
+        ) : (
+          <Link className="sanctuary-action sanctuary-action-urgent" to="/appointments">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              medical_services
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">calendar_month</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>All Appointments</strong>
+              <span>Open the system appointment timeline.</span>
+            </span>
+          </Link>
         )}
 
-        {user.role !== 'doctor' ? (
+        {isPatient ? (
           <Link className="sanctuary-action sanctuary-action-book" to="/book">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               calendar_month
@@ -846,7 +1138,7 @@ function DashboardPage() {
               <span>Schedule a consultation at your convenience.</span>
             </span>
           </Link>
-        ) : (
+        ) : isDoctor ? (
           <Link className="sanctuary-action sanctuary-action-book" to="/doctors/me/slots">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               calendar_month
@@ -859,9 +1151,35 @@ function DashboardPage() {
               <span>Update your availability and consultation windows.</span>
             </span>
           </Link>
+        ) : isHelper ? (
+          <Link className="sanctuary-action sanctuary-action-book" to="/async-consults">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              forum
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">chat</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Delegated Async Consults</strong>
+              <span>Start and follow patient consult threads with consent.</span>
+            </span>
+          </Link>
+        ) : (
+          <Link className="sanctuary-action sanctuary-action-book" to="/appointments/impact">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              insights
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">analytics</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Operations Impact</strong>
+              <span>Track high-level delivery metrics.</span>
+            </span>
+          </Link>
         )}
 
-        {user.role === 'patient' ? (
+        {isPatient ? (
           <Link className="sanctuary-action sanctuary-action-neutral" to="/medicines">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               medication
@@ -874,7 +1192,7 @@ function DashboardPage() {
               <span>View prescriptions and manage your refills.</span>
             </span>
           </Link>
-        ) : (
+        ) : isDoctor ? (
           <Link className="sanctuary-action sanctuary-action-neutral" to="/appointments/impact">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               monitoring
@@ -887,9 +1205,35 @@ function DashboardPage() {
               <span>Track completion rates, urgency, and follow-up load.</span>
             </span>
           </Link>
+        ) : isHelper ? (
+          <Link className="sanctuary-action sanctuary-action-neutral" to="/reminders">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              notifications
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">schedule</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Care Reminders</strong>
+              <span>See reminder timelines for delegated patients.</span>
+            </span>
+          </Link>
+        ) : (
+          <Link className="sanctuary-action sanctuary-action-neutral" to="/appointments">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              list_alt
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">event_note</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Appointment List</strong>
+              <span>Review scheduled consultations.</span>
+            </span>
+          </Link>
         )}
 
-        {user.role === 'patient' ? (
+        {isPatient ? (
           <Link className="sanctuary-action sanctuary-action-neutral" to="/patients/workspace">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               group
@@ -902,7 +1246,7 @@ function DashboardPage() {
               <span>Coordinate healthcare for your loved ones.</span>
             </span>
           </Link>
-        ) : (
+        ) : isDoctor ? (
           <Link className="sanctuary-action sanctuary-action-neutral" to="/doctors/me/analytics">
             <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
               bar_chart
@@ -915,7 +1259,46 @@ function DashboardPage() {
               <span>Review weekly outcomes and consultation trends.</span>
             </span>
           </Link>
+        ) : isHelper ? (
+          <Link className="sanctuary-action sanctuary-action-neutral" to="/appointments">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              calendar_month
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">event_available</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Delegated Appointments</strong>
+              <span>Open appointments where consent allows helper support.</span>
+            </span>
+          </Link>
+        ) : (
+          <Link className="sanctuary-action sanctuary-action-neutral" to="/doctors">
+            <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+              stethoscope
+            </span>
+            <span className="sanctuary-icon-badge" aria-hidden="true">
+              <span className="material-symbols-outlined">groups</span>
+            </span>
+            <span className="sanctuary-action-content">
+              <strong>Doctor Network</strong>
+              <span>Browse the active clinician directory.</span>
+            </span>
+          </Link>
         )}
+
+        <Link className="sanctuary-action sanctuary-action-neutral" to="/ai-copilot">
+          <span className="material-symbols-outlined sanctuary-bg-icon" aria-hidden="true">
+            smart_toy
+          </span>
+          <span className="sanctuary-icon-badge" aria-hidden="true">
+            <span className="material-symbols-outlined">auto_awesome</span>
+          </span>
+          <span className="sanctuary-action-content">
+            <strong>AI Copilot Workspace</strong>
+            <span>Draft notes, summaries, reminders, guidance, and translations safely.</span>
+          </span>
+        </Link>
       </div>
 
       <div className="sanctuary-user-chip" aria-label="Current signed-in user">
@@ -1476,6 +1859,24 @@ function useApiPage(path) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const readCached = useCallback(() => {
+    try {
+      const raw = window.localStorage.getItem(`api-cache:${path}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_err) {
+      return null;
+    }
+  }, [path]);
+
+  const writeCached = useCallback(
+    (value) => {
+      try {
+        window.localStorage.setItem(`api-cache:${path}`, JSON.stringify(value));
+      } catch (_err) {}
+    },
+    [path]
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -1487,6 +1888,12 @@ function useApiPage(path) {
         return;
       }
       if (!res.ok) {
+        const cached = readCached();
+        if (cached) {
+          setData(cached);
+          setError('Live data unavailable. Showing last saved copy.');
+          return;
+        }
         setError(res.data?.error || 'Failed to load page.');
         return;
       }
@@ -1495,12 +1902,19 @@ function useApiPage(path) {
         return;
       }
       setData(res.data);
+      writeCached(res.data);
     } catch (_err) {
+      const cached = readCached();
+      if (cached) {
+        setData(cached);
+        setError('You appear offline. Showing last saved copy.');
+        return;
+      }
       setError('Unable to load data.');
     } finally {
       setLoading(false);
     }
-  }, [path, navigate]);
+  }, [path, navigate, readCached, writeCached]);
 
   useEffect(() => {
     load();
@@ -1973,8 +2387,10 @@ function AppointmentsPage() {
 }
 
 function ImpactPage() {
+  const { user } = useSession();
   const { data, error, loading } = useApiPage('/api/appointments/impact');
   const metrics = data?.metrics;
+  const adminInsights = metrics?.adminInsights;
 
   return (
     <>
@@ -1997,6 +2413,118 @@ function ImpactPage() {
           <MetricCard label="Reminder due" value={metrics.reminderDueCount} />
           <MetricCard label="Follow-ups (14d)" value={metrics.followUpCount} />
         </section>
+      ) : null}
+
+      {user?.role === 'admin' && adminInsights ? (
+        <>
+          <section className="card">
+            <h3>Admin operations panel</h3>
+            <div className="grid cards">
+              <MetricCard label="Unique patients reached" value={adminInsights.patientReach} />
+              <MetricCard label="No-show rate" value={`${adminInsights.noShowRate}%`} />
+              <MetricCard label="Urgent case rate" value={`${adminInsights.urgentRate}%`} />
+              <MetricCard label="Video consults" value={adminInsights.modeCounts?.video || 0} />
+              <MetricCard label="Audio consults" value={adminInsights.modeCounts?.audio || 0} />
+              <MetricCard label="Text consults" value={adminInsights.modeCounts?.text || 0} />
+            </div>
+          </section>
+
+          <section className="grid cards">
+            <article className="card metric">
+              <p className="muted">Top doctors by consultation load</p>
+              {(adminInsights.topDoctors || []).length === 0 ? (
+                <p className="muted">No doctor activity yet.</p>
+              ) : (
+                <div className="metric-stack">
+                  {adminInsights.topDoctors.map((doctor) => (
+                    <p key={doctor.doctorId}>
+                      <strong>{doctor.doctorName}</strong>
+                      {' - '}
+                      {doctor.total} visits, {doctor.completionRate}% completed, {doctor.noShow} no-shows
+                    </p>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="card metric">
+              <p className="muted">14-day volume trend</p>
+              {(adminInsights.dailySeries || []).length === 0 ? (
+                <p className="muted">No data in the last 14 days.</p>
+              ) : (
+                <div className="metric-stack">
+                  {adminInsights.dailySeries.map((row) => (
+                    <p key={row.day}>
+                      <strong>{row.day}</strong>
+                      {' - '}
+                      {row.count} consult{row.count === 1 ? '' : 's'}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
+
+          <section className="grid cards">
+            <article className="card metric">
+              <p className="muted">Operational observability</p>
+              <div className="metric-stack">
+                <p>
+                  <strong>Readiness:</strong> {adminInsights.operational?.readiness || 'unknown'}
+                </p>
+                <p>
+                  <strong>DB status:</strong> {adminInsights.operational?.databaseStatus || 'unknown'}
+                </p>
+                <p>
+                  <strong>DB latency:</strong> {adminInsights.operational?.dbLatencyMs ?? 'N/A'} ms
+                </p>
+                <p>
+                  <strong>Reminder queue:</strong> {adminInsights.operational?.reminderQueueDepth ?? 'N/A'}
+                </p>
+                <p>
+                  <strong>Async queue:</strong> {adminInsights.operational?.asyncQueueDepth ?? 'N/A'}
+                </p>
+                <p>
+                  <strong>Failed reminders (24h):</strong> {adminInsights.operational?.failedReminders24h ?? 'N/A'}
+                </p>
+              </div>
+            </article>
+
+            <article className="card metric">
+              <p className="muted">Mode quality KPIs</p>
+              {(adminInsights.modeKpis || []).length === 0 ? (
+                <p className="muted">No mode-level KPI data yet.</p>
+              ) : (
+                <div className="metric-stack">
+                  {adminInsights.modeKpis.map((row) => (
+                    <p key={row.mode}>
+                      <strong>{row.mode.toUpperCase()}</strong>
+                      {' - '}
+                      {row.total} visits, {row.completionRate}% completed, {row.noShowRate}% no-show
+                    </p>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
+
+          <section className="card metric">
+            <p className="muted">Clinical impact by region</p>
+            {(adminInsights.regionKpis || []).length === 0 ? (
+              <p className="muted">No region-level KPI data yet.</p>
+            ) : (
+              <div className="metric-stack">
+                {adminInsights.regionKpis.map((row) => (
+                  <p key={row.region}>
+                    <strong>{row.region}</strong>
+                    {' - '}
+                    {row.total} visits, {row.completionRate}% completed, {row.urgentRate}% urgent
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       ) : null}
     </>
   );
@@ -2194,6 +2722,11 @@ function AppointmentDetailPage() {
               <Link className="patient-appointment-cta secondary" to={`/prescriptions/${appointment.id}`}>
                 <span className="material-symbols-outlined" aria-hidden="true">description</span>
                 Prescription
+              </Link>
+
+              <Link className="patient-appointment-cta secondary" to={`/ai-copilot?appointmentId=${appointment.id}`}>
+                <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                AI Copilot
               </Link>
 
               <div className="patient-appointment-action-grid">
@@ -2522,6 +3055,9 @@ function AppointmentDetailPage() {
                 <Link className="doctor-appointment-sub-btn" to={`/prescriptions/${appointment.id}`}>
                   Prescription
                 </Link>
+                <Link className="doctor-appointment-sub-btn" to={`/ai-copilot?appointmentId=${appointment.id}`}>
+                  AI Copilot
+                </Link>
                 <button
                   type="button"
                   className="doctor-appointment-sub-btn danger"
@@ -2749,6 +3285,32 @@ function CallPage() {
           Use this panel if voice is unclear due to low network quality.
         </div>
 
+        <div className="call-chat-tools" aria-label="Chat translation controls">
+          <label htmlFor="chatLanguage">Chat translation language</label>
+          <div className="call-chat-tools-row">
+            <select id="chatLanguage" defaultValue={user.language || 'English'}>
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Bengali">Bengali</option>
+              <option value="Tamil">Tamil</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Marathi">Marathi</option>
+              <option value="Gujarati">Gujarati</option>
+              <option value="Kannada">Kannada</option>
+              <option value="Malayalam">Malayalam</option>
+              <option value="Urdu">Urdu</option>
+            </select>
+            <button id="btnTranslateToggle" type="button" className="call-control-btn compact">
+              <span className="material-symbols-outlined" aria-hidden="true">translate</span>
+              <span data-label>Translate: Off</span>
+            </button>
+          </div>
+          <p className="muted">When enabled, incoming and outgoing chat messages are translated to your selected language.</p>
+          <Link className="call-ai-link" to={`/ai-copilot?appointmentId=${appointment.id}`}>
+            Open full AI Copilot workspace
+          </Link>
+        </div>
+
         <div id="chatLog" className="chat-log call-chat-log" />
 
         <form id="chatForm" className="call-chat-form">
@@ -2776,6 +3338,10 @@ function CallPage() {
           <button id="btnText" className="call-control-btn" type="button">
             <span className="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
             <span>Text</span>
+          </button>
+          <button id="btnDataQuality" className="call-control-btn" type="button">
+            <span className="material-symbols-outlined" aria-hidden="true">network_check</span>
+            <span data-label>Quality: Auto</span>
           </button>
           <button id="btnCamera" className="call-control-btn" type="button">
             <span className="material-symbols-outlined" aria-hidden="true">photo_camera</span>
@@ -3010,6 +3576,10 @@ function PrescriptionPage() {
               <span className="material-symbols-outlined" aria-hidden="true">download</span>
               Download PDF Prescription
             </a>
+            <Link to={`/ai-copilot?appointmentId=${appointmentId}`}>
+              <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+              Explain with AI Copilot
+            </Link>
             <small>Valid for 30 days from date of issue.</small>
           </div>
         </main>
@@ -3201,6 +3771,635 @@ function PrescriptionPage() {
         </section>
       ) : null}
     </>
+  );
+}
+
+function AICopilotPage() {
+  const { user } = useSession();
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const prefillAppointmentId = searchParams.get('appointmentId') || '';
+  const prefillDocumentId = searchParams.get('documentId') || '';
+
+  const [contextLoading, setContextLoading] = useState(true);
+  const [refreshingContext, setRefreshingContext] = useState(false);
+  const [showBackendDetails, setShowBackendDetails] = useState(false);
+  const [contextError, setContextError] = useState('');
+  const [contextData, setContextData] = useState({
+    ollama: { configured: false, model: 'fallback', baseUrl: 'http://127.0.0.1:11434' },
+    appointments: [],
+    documents: [],
+    delegatedPatients: []
+  });
+
+  const [appointmentId, setAppointmentId] = useState('');
+  const [documentId, setDocumentId] = useState('');
+  const [patientId, setPatientId] = useState('');
+
+  const [draftFocus, setDraftFocus] = useState('');
+  const [summaryAudience, setSummaryAudience] = useState('patient');
+  const [summaryLanguage, setSummaryLanguage] = useState(user.language || 'English');
+  const [medLanguage, setMedLanguage] = useState(user.language || 'English');
+  const [medReadingLevel, setMedReadingLevel] = useState('easy');
+  const [triageSubject, setTriageSubject] = useState('');
+  const [triageSymptoms, setTriageSymptoms] = useState('');
+  const [triagePriority, setTriagePriority] = useState('medium');
+  const [triageLanguage, setTriageLanguage] = useState(user.language || 'English');
+  const [reminderTone, setReminderTone] = useState('warm');
+  const [reminderChannel, setReminderChannel] = useState('sms');
+  const [reminderLanguage, setReminderLanguage] = useState(user.language || 'English');
+  const [documentQuestion, setDocumentQuestion] = useState('');
+  const [documentLanguage, setDocumentLanguage] = useState(user.language || 'English');
+  const [guidanceGoal, setGuidanceGoal] = useState('Daily support plan for medication and symptom monitoring.');
+  const [guidanceLanguage, setGuidanceLanguage] = useState(user.language || 'English');
+  const [translationText, setTranslationText] = useState('');
+  const [translationSourceLanguage, setTranslationSourceLanguage] = useState('auto');
+  const [translationTargetLanguage, setTranslationTargetLanguage] = useState(user.language || 'English');
+
+  const [busyMap, setBusyMap] = useState({});
+  const [errorMap, setErrorMap] = useState({});
+  const [resultMap, setResultMap] = useState({});
+  const [offlineDrafts, setOfflineDrafts] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(AI_OFFLINE_DRAFTS_KEY);
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_err) {
+      return [];
+    }
+  });
+
+  const appointments = contextData.appointments || [];
+  const documents = contextData.documents || [];
+  const delegatedPatients = contextData.delegatedPatients || [];
+  const selectedAppointment = useMemo(
+    () => appointments.find((row) => row.id === appointmentId) || null,
+    [appointments, appointmentId]
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AI_OFFLINE_DRAFTS_KEY, JSON.stringify(offlineDrafts.slice(0, 80)));
+    } catch (_err) {
+      // Ignore local storage persistence errors.
+    }
+  }, [offlineDrafts]);
+
+  const loadContext = useCallback(async ({ silent = false } = {}) => {
+    if (silent) {
+      setRefreshingContext(true);
+    } else {
+      setContextLoading(true);
+    }
+    setContextError('');
+
+    try {
+      const res = await apiRequest('/api/ai/context');
+      if (!res.ok) {
+        setContextError(res.data?.error || 'Unable to load AI context.');
+        return;
+      }
+
+      setContextData({
+        ollama: res.data?.ollama || { configured: false, model: 'fallback', baseUrl: 'http://127.0.0.1:11434' },
+        appointments: res.data?.appointments || [],
+        documents: res.data?.documents || [],
+        delegatedPatients: res.data?.delegatedPatients || []
+      });
+    } catch (_err) {
+      setContextError('Unable to load AI context due to network issues.');
+    } finally {
+      setContextLoading(false);
+      setRefreshingContext(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadContext();
+  }, [loadContext]);
+
+  useEffect(() => {
+    if (!appointments.length) return;
+    setAppointmentId((prev) => prev || prefillAppointmentId || appointments[0].id || '');
+  }, [appointments, prefillAppointmentId]);
+
+  useEffect(() => {
+    if (!documents.length) return;
+    setDocumentId((prev) => prev || prefillDocumentId || documents[0].id || '');
+  }, [documents, prefillDocumentId]);
+
+  useEffect(() => {
+    if (!delegatedPatients.length) return;
+    setPatientId((prev) => prev || delegatedPatients[0].id || '');
+  }, [delegatedPatients]);
+
+  useEffect(() => {
+    const preferredLanguage = selectedAppointment?.patient?.language || selectedAppointment?.doctor?.language || user.language || 'English';
+    if (!selectedAppointment) return;
+    setSummaryLanguage(preferredLanguage);
+    setReminderLanguage(preferredLanguage);
+  }, [selectedAppointment, user.language]);
+
+  const queueOfflineDraft = useCallback((key, path, body) => {
+    const draft = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      key,
+      path,
+      body,
+      createdAt: new Date().toISOString()
+    };
+    setOfflineDrafts((prev) => [draft, ...prev].slice(0, 80));
+  }, []);
+
+  const retryOfflineDraft = useCallback(async (draft) => {
+    const res = await apiRequest(draft.path, {
+      method: 'POST',
+      body: draft.body
+    });
+
+    if (!res.ok) {
+      throw new Error(res.data?.error || 'Retry failed');
+    }
+
+    setResultMap((prev) => ({ ...prev, [draft.key]: res.data }));
+  }, []);
+
+  const retryAllOfflineDrafts = useCallback(async () => {
+    if (!offlineDrafts.length) return;
+    setBusyMap((prev) => ({ ...prev, offlineRetry: true }));
+    const remaining = [];
+
+    for (const draft of offlineDrafts) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await retryOfflineDraft(draft);
+      } catch (_err) {
+        remaining.push(draft);
+      }
+    }
+
+    setOfflineDrafts(remaining);
+    setBusyMap((prev) => ({ ...prev, offlineRetry: false }));
+  }, [offlineDrafts, retryOfflineDraft]);
+
+  const runFeature = async (key, path, body) => {
+    setBusyMap((prev) => ({ ...prev, [key]: true }));
+    setErrorMap((prev) => ({ ...prev, [key]: '' }));
+
+    try {
+      const res = await apiRequest(path, {
+        method: 'POST',
+        body
+      });
+
+      if (!res.ok) {
+        setErrorMap((prev) => ({ ...prev, [key]: res.data?.error || 'Unable to complete this AI action.' }));
+        return;
+      }
+
+      setResultMap((prev) => ({ ...prev, [key]: res.data }));
+    } catch (_err) {
+      queueOfflineDraft(key, path, body);
+      setErrorMap((prev) => ({ ...prev, [key]: 'Network issue detected. Draft saved offline for retry.' }));
+    } finally {
+      setBusyMap((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const renderResult = (key) => {
+    const data = resultMap[key];
+    if (!data) return null;
+
+    return (
+      <div className="ai-result-box">
+        <div className="ai-result-meta">
+          <span className="pill">Model: {data.model || 'fallback'}</span>
+          <span className="pill">Fallback: {data.fallbackUsed ? 'yes' : 'no'}</span>
+          <span className="pill">Review: {data.requiresReview ? 'required' : 'optional'}</span>
+        </div>
+        <pre>{JSON.stringify(data.result || {}, null, 2)}</pre>
+      </div>
+    );
+  };
+
+  if (contextLoading) return <p className="muted">Preparing AI Copilot workspace...</p>;
+
+  return (
+    <section className="ai-copilot-shell">
+      <header className="ai-copilot-hero">
+        <p className="kicker">Secure AI Layer</p>
+        <h2>Ollama AI Copilot Workspace</h2>
+        <p>
+          Every output is a draft. Human review stays mandatory for clinical decisions, reminders, and record updates.
+        </p>
+        <div className="ai-copilot-hero-meta">
+          <span className="pill">Ollama: {contextData.ollama?.configured ? 'connected' : 'fallback mode'}</span>
+          <span className="pill">Model: {contextData.ollama?.model || 'fallback'}</span>
+          <span className="pill">Endpoint: {contextData.ollama?.baseUrl || 'N/A'}</span>
+          <button type="button" className="compass-toggle-btn" onClick={() => setShowBackendDetails((prev) => !prev)}>
+            {showBackendDetails ? 'Hide backend status' : 'Show backend status'}
+          </button>
+          <button type="button" className="compass-toggle-btn" onClick={() => loadContext({ silent: true })} disabled={refreshingContext}>
+            {refreshingContext ? 'Refreshing...' : 'Refresh backend status'}
+          </button>
+        </div>
+
+        {showBackendDetails ? (
+          <div className="ai-result-box">
+            <div className="ai-result-meta">
+              <span className="pill">Backend: Ollama</span>
+              <span className="pill">State: {contextData.ollama?.configured ? 'configured' : 'fallback active'}</span>
+            </div>
+            <p className="muted">Model: {contextData.ollama?.model || 'fallback'}</p>
+            <p className="muted">Endpoint: {contextData.ollama?.baseUrl || 'N/A'}</p>
+            {!contextData.ollama?.configured ? (
+              <p className="error">Ollama is not configured. Set OLLAMA_BASE_URL and OLLAMA_MODEL in your environment.</p>
+            ) : (
+              <p className="success">Ollama configuration detected. AI features will use the configured local model.</p>
+            )}
+          </div>
+        ) : null}
+      </header>
+
+      {contextError ? <p className="error">{contextError}</p> : null}
+
+      <article className="compass-card">
+        <h3>Offline draft queue</h3>
+        <p className="muted">
+          Failed AI requests are saved locally so low-connectivity users can retry safely.
+        </p>
+        <div className="row-inline">
+          <span className="pill">Queued drafts: {offlineDrafts.length}</span>
+          <button type="button" className="compass-action-btn subtle" onClick={retryAllOfflineDrafts} disabled={!offlineDrafts.length || busyMap.offlineRetry}>
+            {busyMap.offlineRetry ? 'Retrying...' : 'Retry all drafts'}
+          </button>
+          <button type="button" className="compass-action-btn subtle" onClick={() => setOfflineDrafts([])} disabled={!offlineDrafts.length || busyMap.offlineRetry}>
+            Clear queue
+          </button>
+        </div>
+        {offlineDrafts.length ? (
+          <div className="metric-stack">
+            {offlineDrafts.slice(0, 8).map((draft) => (
+              <p key={draft.id}>
+                <strong>{draft.key}</strong>
+                {' - queued at '}
+                {new Date(draft.createdAt).toLocaleString()}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No queued drafts right now.</p>
+        )}
+      </article>
+
+      <article className="compass-card">
+        <h3>Shared Context</h3>
+        <div className="compass-inline-grid">
+          <label>
+            Appointment context
+            <select value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)}>
+              <option value="">Choose appointment</option>
+              {appointments.map((appointment) => (
+                <option key={appointment.id} value={appointment.id}>
+                  {formatPrettyDate(appointment.startAt)} - Dr. {appointment.doctor?.fullName || 'Doctor'}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Document context
+            <select value={documentId} onChange={(e) => setDocumentId(e.target.value)}>
+              <option value="">Choose document</option>
+              {documents.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.fileName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Delegated patient
+            <select value={patientId} onChange={(e) => setPatientId(e.target.value)}>
+              <option value="">Choose patient</option>
+              {delegatedPatients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.fullName}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </article>
+
+      {user.role === 'doctor' || user.role === 'admin' ? (
+        <article className="compass-card">
+          <h3>1) Doctor Note Drafting</h3>
+          <form
+            className="compass-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!appointmentId) {
+                setErrorMap((prev) => ({ ...prev, draftNote: 'Select an appointment first.' }));
+                return;
+              }
+              runFeature('draftNote', '/api/ai/draft-note', {
+                appointmentId,
+                focus: draftFocus
+              });
+            }}
+          >
+            <label>
+              Focus (optional)
+              <textarea value={draftFocus} onChange={(e) => setDraftFocus(e.target.value)} rows={3} placeholder="Example: emphasize medication adherence and red flags" />
+            </label>
+            <button type="submit" className="compass-action-btn small" disabled={busyMap.draftNote}>
+              {busyMap.draftNote ? 'Generating...' : 'Generate Draft Note'}
+            </button>
+            {errorMap.draftNote ? <p className="error">{errorMap.draftNote}</p> : null}
+          </form>
+          {renderResult('draftNote')}
+        </article>
+      ) : null}
+
+      <article className="compass-card">
+        <h3>2) Patient-Friendly Visit Summary</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!appointmentId) {
+              setErrorMap((prev) => ({ ...prev, summary: 'Select an appointment first.' }));
+              return;
+            }
+            runFeature('summary', '/api/ai/visit-summary', {
+              appointmentId,
+              audience: summaryAudience,
+              language: summaryLanguage
+            });
+          }}
+        >
+          <div className="compass-inline-grid">
+            <label>
+              Audience
+              <select value={summaryAudience} onChange={(e) => setSummaryAudience(e.target.value)}>
+                <option value="patient">Patient</option>
+                <option value="caregiver">Caregiver</option>
+                <option value="doctor">Doctor</option>
+              </select>
+            </label>
+            <label>
+              Language
+              <input value={summaryLanguage} onChange={(e) => setSummaryLanguage(e.target.value)} />
+            </label>
+          </div>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.summary}>
+            {busyMap.summary ? 'Generating...' : 'Generate Visit Summary'}
+          </button>
+          {errorMap.summary ? <p className="error">{errorMap.summary}</p> : null}
+        </form>
+        {renderResult('summary')}
+      </article>
+
+      <article className="compass-card">
+        <h3>3) Medication Instruction Simplifier</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!appointmentId) {
+              setErrorMap((prev) => ({ ...prev, meds: 'Select an appointment first.' }));
+              return;
+            }
+            runFeature('meds', '/api/ai/simplify-medication', {
+              appointmentId,
+              language: medLanguage,
+              readingLevel: medReadingLevel
+            });
+          }}
+        >
+          <div className="compass-inline-grid">
+            <label>
+              Language
+              <input value={medLanguage} onChange={(e) => setMedLanguage(e.target.value)} />
+            </label>
+            <label>
+              Reading level
+              <select value={medReadingLevel} onChange={(e) => setMedReadingLevel(e.target.value)}>
+                <option value="easy">Easy</option>
+                <option value="standard">Standard</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.meds}>
+            {busyMap.meds ? 'Generating...' : 'Simplify Medication Plan'}
+          </button>
+          {errorMap.meds ? <p className="error">{errorMap.meds}</p> : null}
+        </form>
+        {renderResult('meds')}
+      </article>
+
+      <article className="compass-card">
+        <h3>4) Async Triage Assistant</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            runFeature('triage', '/api/ai/triage-assist', {
+              subject: triageSubject,
+              symptoms: triageSymptoms,
+              preferredLanguage: triageLanguage,
+              priority: triagePriority,
+              patientId: patientId || ''
+            });
+          }}
+        >
+          <label>
+            Subject
+            <input value={triageSubject} onChange={(e) => setTriageSubject(e.target.value)} required />
+          </label>
+          <label>
+            Symptoms
+            <textarea value={triageSymptoms} onChange={(e) => setTriageSymptoms(e.target.value)} rows={4} required />
+          </label>
+          <div className="compass-inline-grid">
+            <label>
+              Priority
+              <select value={triagePriority} onChange={(e) => setTriagePriority(e.target.value)}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Language
+              <input value={triageLanguage} onChange={(e) => setTriageLanguage(e.target.value)} />
+            </label>
+          </div>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.triage}>
+            {busyMap.triage ? 'Analyzing...' : 'Run Triage Draft'}
+          </button>
+          {errorMap.triage ? <p className="error">{errorMap.triage}</p> : null}
+        </form>
+        {renderResult('triage')}
+      </article>
+
+      <article className="compass-card">
+        <h3>5) Reminder Text Generation</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!appointmentId) {
+              setErrorMap((prev) => ({ ...prev, reminder: 'Select an appointment first.' }));
+              return;
+            }
+            runFeature('reminder', '/api/ai/reminder-text', {
+              appointmentId,
+              tone: reminderTone,
+              channel: reminderChannel,
+              language: reminderLanguage
+            });
+          }}
+        >
+          <div className="compass-inline-grid">
+            <label>
+              Tone
+              <select value={reminderTone} onChange={(e) => setReminderTone(e.target.value)}>
+                <option value="warm">Warm</option>
+                <option value="formal">Formal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </label>
+            <label>
+              Channel
+              <select value={reminderChannel} onChange={(e) => setReminderChannel(e.target.value)}>
+                <option value="sms">SMS</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+            </label>
+            <label>
+              Language
+              <input value={reminderLanguage} onChange={(e) => setReminderLanguage(e.target.value)} />
+            </label>
+          </div>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.reminder}>
+            {busyMap.reminder ? 'Generating...' : 'Generate Reminder Draft'}
+          </button>
+          {errorMap.reminder ? <p className="error">{errorMap.reminder}</p> : null}
+        </form>
+        {renderResult('reminder')}
+      </article>
+
+      <article className="compass-card">
+        <h3>6) Document Assistant with Source Snippets</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!documentId) {
+              setErrorMap((prev) => ({ ...prev, document: 'Select a document first.' }));
+              return;
+            }
+            runFeature('document', '/api/ai/document-assist', {
+              documentId,
+              question: documentQuestion,
+              language: documentLanguage
+            });
+          }}
+        >
+          <label>
+            Your question
+            <textarea
+              value={documentQuestion}
+              onChange={(e) => setDocumentQuestion(e.target.value)}
+              rows={3}
+              required
+              placeholder="Example: What dosage pattern is mentioned for this medication?"
+            />
+          </label>
+          <label>
+            Language
+            <input value={documentLanguage} onChange={(e) => setDocumentLanguage(e.target.value)} />
+          </label>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.document}>
+            {busyMap.document ? 'Analyzing...' : 'Ask Document Assistant'}
+          </button>
+          {errorMap.document ? <p className="error">{errorMap.document}</p> : null}
+        </form>
+        {renderResult('document')}
+      </article>
+
+      <article className="compass-card">
+        <h3>7) Help Worker Guidance Cards</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            runFeature('guidance', '/api/ai/helper-guidance', {
+              patientId: patientId || '',
+              goal: guidanceGoal,
+              language: guidanceLanguage
+            });
+          }}
+        >
+          <label>
+            Goal
+            <textarea value={guidanceGoal} onChange={(e) => setGuidanceGoal(e.target.value)} rows={3} required />
+          </label>
+          <label>
+            Language
+            <input value={guidanceLanguage} onChange={(e) => setGuidanceLanguage(e.target.value)} />
+          </label>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.guidance}>
+            {busyMap.guidance ? 'Generating...' : 'Generate Guidance Cards'}
+          </button>
+          {errorMap.guidance ? <p className="error">{errorMap.guidance}</p> : null}
+        </form>
+        {renderResult('guidance')}
+      </article>
+
+      <article className="compass-card">
+        <h3>8) Multilingual Translation for Chat</h3>
+        <form
+          className="compass-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!appointmentId) {
+              setErrorMap((prev) => ({ ...prev, translate: 'Select an appointment first.' }));
+              return;
+            }
+            runFeature('translate', '/api/ai/translate-chat', {
+              appointmentId,
+              text: translationText,
+              sourceLanguage: translationSourceLanguage,
+              targetLanguage: translationTargetLanguage
+            });
+          }}
+        >
+          <label>
+            Chat text
+            <textarea value={translationText} onChange={(e) => setTranslationText(e.target.value)} rows={3} required />
+          </label>
+          <div className="compass-inline-grid">
+            <label>
+              Source language
+              <input value={translationSourceLanguage} onChange={(e) => setTranslationSourceLanguage(e.target.value)} />
+            </label>
+            <label>
+              Target language
+              <input value={translationTargetLanguage} onChange={(e) => setTranslationTargetLanguage(e.target.value)} required />
+            </label>
+          </div>
+          <button type="submit" className="compass-action-btn small" disabled={busyMap.translate}>
+            {busyMap.translate ? 'Translating...' : 'Translate Chat Message'}
+          </button>
+          {errorMap.translate ? <p className="error">{errorMap.translate}</p> : null}
+        </form>
+        {renderResult('translate')}
+      </article>
+    </section>
   );
 }
 
@@ -3588,6 +4787,784 @@ function PatientWorkspacePage() {
         </div>
       </section>
     </>
+  );
+}
+
+function RemindersPage() {
+  const { user } = useSession();
+  const { data, error, loading, reload } = useApiPage('/api/reminders');
+  const [dispatching, setDispatching] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const canDispatch = user.role === 'doctor' || user.role === 'admin';
+
+  const dispatchDue = async () => {
+    setDispatching(true);
+    setMessage('');
+
+    try {
+      const res = await apiRequest('/api/reminders/dispatch', {
+        method: 'POST',
+        body: { limit: 30 }
+      });
+
+      if (!res.ok) {
+        setMessage(res.data?.error || 'Unable to dispatch reminders right now.');
+        return;
+      }
+
+      setMessage(`Dispatch complete. Sent ${res.data?.sent || 0}, failed ${res.data?.failed || 0}.`);
+      reload();
+    } catch (_err) {
+      setMessage('Dispatch failed due to network issues.');
+    } finally {
+      setDispatching(false);
+    }
+  };
+
+  if (loading) return <p className="muted">Loading reminders...</p>;
+  if (error) return <p className="error">{error}</p>;
+
+  const summary = data?.summary || { scheduled: 0, sent: 0, failed: 0, skipped: 0 };
+  const timeline = data?.timeline || [];
+
+  return (
+    <section className="compass-shell">
+      <header className="compass-hero">
+        <p className="kicker">Digital Sanctuary</p>
+        <h2>Reminder Compass</h2>
+        <p>
+          One step at a time. Confirm upcoming nudges, then trigger due reminders when network is available.
+        </p>
+        <Link className="compass-link-btn" to="/ai-copilot">
+          Open AI reminder drafts
+        </Link>
+      </header>
+
+      {data?.unsupported ? (
+        <p className="error">Reminder pipeline is unavailable until the latest Prisma migration is applied.</p>
+      ) : null}
+
+      {message ? <p className={message.toLowerCase().includes('failed') ? 'error' : 'success'}>{message}</p> : null}
+
+      <section className="compass-metric-grid">
+        <article className="compass-metric-card">
+          <h3>Scheduled</h3>
+          <strong>{summary.scheduled || 0}</strong>
+        </article>
+        <article className="compass-metric-card accent">
+          <h3>Sent</h3>
+          <strong>{summary.sent || 0}</strong>
+        </article>
+        <article className="compass-metric-card">
+          <h3>Failed</h3>
+          <strong>{summary.failed || 0}</strong>
+        </article>
+        <article className="compass-metric-card">
+          <h3>Skipped</h3>
+          <strong>{summary.skipped || 0}</strong>
+        </article>
+      </section>
+
+      {canDispatch ? (
+        <button type="button" className="compass-action-btn" onClick={dispatchDue} disabled={dispatching || data?.unsupported}>
+          <span className="material-symbols-outlined" aria-hidden="true">notifications_active</span>
+          {dispatching ? 'Sending...' : 'Send Due Reminders Now'}
+        </button>
+      ) : (
+        <p className="muted">Reminders are sent automatically by your care team.</p>
+      )}
+
+      <div className="compass-list">
+        {timeline.length === 0 ? <p className="muted">No reminder activity yet.</p> : null}
+
+        {timeline.map((item) => (
+          <article className="compass-row" key={item.id}>
+            <div className="compass-row-main">
+              <h4>
+                {user.role === 'patient'
+                  ? `Visit with Dr. ${item.appointment?.doctor?.fullName || 'Doctor'}`
+                  : `${item.patient?.fullName || 'Patient'} reminder`}
+              </h4>
+              <p>
+                Appointment: {formatPrettyDate(item.appointment?.startAt)} at {formatPrettyTime(item.appointment?.startAt)}
+              </p>
+              <p>Planned send time: {utcDateTime(item.sendAt)}</p>
+            </div>
+            <span className={`compass-status-pill ${String(item.status || '').toLowerCase()}`}>{item.status}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CareSupportPage() {
+  const { user } = useSession();
+  const { data, error, loading, reload } = useApiPage('/api/support/consents');
+  const [feedback, setFeedback] = useState('');
+
+  const addHelper = async (event) => {
+    event.preventDefault();
+    setFeedback('');
+
+    const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const res = await apiRequest('/api/support/helpers', { method: 'POST', body });
+    if (!res.ok) {
+      setFeedback(res.data?.error || 'Could not save helper details.');
+      return;
+    }
+
+    setFeedback('Helper profile saved.');
+    event.currentTarget.reset();
+    reload();
+  };
+
+  const grantConsent = async (event) => {
+    event.preventDefault();
+    setFeedback('');
+
+    const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const res = await apiRequest('/api/support/consents', { method: 'POST', body });
+    if (!res.ok) {
+      setFeedback(res.data?.error || 'Could not grant consent.');
+      return;
+    }
+
+    setFeedback('Consent granted and logged.');
+    event.currentTarget.reset();
+    reload();
+  };
+
+  const toggleHelper = async (helper) => {
+    setFeedback('');
+
+    const res = await apiRequest(`/api/support/helpers/${helper.id}/toggle`, {
+      method: 'POST',
+      body: { active: !helper.isActive }
+    });
+
+    if (!res.ok) {
+      setFeedback(res.data?.error || 'Could not update helper status.');
+      return;
+    }
+
+    setFeedback(`Helper ${!helper.isActive ? 'activated' : 'deactivated'}.`);
+    reload();
+  };
+
+  if (loading) return <p className="muted">Loading care support...</p>;
+  if (error) return <p className="error">{error}</p>;
+
+  const helpers = data?.helpers || [];
+  const activeConsents = data?.activeConsents || [];
+  const history = data?.history || [];
+  const upcomingAppointments = data?.upcomingAppointments || [];
+  const canManage = Boolean(data?.canManage && user.role === 'patient');
+
+  return (
+    <section className="compass-shell">
+      <header className="compass-hero">
+        <p className="kicker">Guided Compass</p>
+        <h2>Care Support & Consent</h2>
+        <p>Register trusted helpers, then grant clear consent for appointment or async-consult assistance.</p>
+        <Link className="compass-link-btn" to="/ai-copilot">
+          Generate helper guidance cards
+        </Link>
+      </header>
+
+      {data?.unsupported ? <p className="error">Care-support tables are missing. Apply the latest migration.</p> : null}
+      {feedback ? <p className={feedback.toLowerCase().includes('could not') ? 'error' : 'success'}>{feedback}</p> : null}
+      {user.role === 'help_worker' ? <p className="muted">Showing active consent records linked to your helper phone number.</p> : null}
+
+      {canManage ? (
+        <div className="compass-two-col">
+          <article className="compass-card">
+            <h3>Step 1: Add Helper</h3>
+            <form className="compass-form" onSubmit={addHelper}>
+              <label>
+                Helper name
+                <input name="helperName" required />
+              </label>
+              <label>
+                Phone number
+                <input name="helperPhone" required />
+              </label>
+              <label>
+                Relation
+                <input name="relationToPatient" />
+              </label>
+              <label>
+                Village or area
+                <input name="village" />
+              </label>
+              <label>
+                Notes
+                <textarea name="notes" rows={3} />
+              </label>
+              <button type="submit" className="compass-action-btn small">Save Helper</button>
+            </form>
+          </article>
+
+          <article className="compass-card">
+            <h3>Step 2: Grant Consent</h3>
+            <form className="compass-form" onSubmit={grantConsent}>
+              <label>
+                Select helper
+                <select name="helperId" required defaultValue="">
+                  <option value="" disabled>Choose helper</option>
+                  {helpers
+                    .filter((helper) => helper.isActive)
+                    .map((helper) => (
+                      <option key={helper.id} value={helper.id}>
+                        {helper.helperName} ({helper.helperPhone})
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label>
+                Consent scope
+                <select name="scope" defaultValue="appointment">
+                  <option value="appointment">Appointment help</option>
+                  <option value="async_consult">Async consult follow-up</option>
+                  <option value="records">Records and documents</option>
+                  <option value="all">All supported actions</option>
+                </select>
+              </label>
+
+              <label>
+                Optional appointment
+                <select name="appointmentId" defaultValue="">
+                  <option value="">Any appointment</option>
+                  {upcomingAppointments.map((appointment) => (
+                    <option key={appointment.id} value={appointment.id}>
+                      {formatPrettyDate(appointment.startAt)} - Dr. {appointment.doctor?.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Notes
+                <textarea name="notes" rows={3} />
+              </label>
+
+              <button type="submit" className="compass-action-btn small">Grant Consent</button>
+            </form>
+          </article>
+        </div>
+      ) : null}
+
+      {canManage ? (
+        <article className="compass-card">
+          <h3>Helper Directory</h3>
+          {(helpers || []).length === 0 ? <p className="muted">No helper profiles yet.</p> : null}
+          <div className="compass-list">
+            {helpers.map((helper) => (
+              <article className="compass-row" key={helper.id}>
+                <div className="compass-row-main">
+                  <h4>{helper.helperName}</h4>
+                  <p>{helper.helperPhone}</p>
+                  <p>{helper.relationToPatient || 'Community helper'}</p>
+                </div>
+                <button type="button" className="compass-toggle-btn" onClick={() => toggleHelper(helper)}>
+                  {helper.isActive ? 'Deactivate' : 'Activate'}
+                </button>
+              </article>
+            ))}
+          </div>
+        </article>
+      ) : null}
+
+      <article className="compass-card">
+        <h3>Active Consent Log</h3>
+        {(activeConsents || []).length === 0 ? <p className="muted">No active consent records.</p> : null}
+        <div className="compass-list">
+          {activeConsents.map((consent) => (
+            <article className="compass-row" key={consent.id}>
+              <div className="compass-row-main">
+                <h4>
+                  {consent.helper?.helperName || consent.patient?.fullName || 'Care helper'} - {consent.scope}
+                </h4>
+                <p>{consent.notes || 'No notes added.'}</p>
+                {consent.appointment ? (
+                  <p>
+                    Linked appointment: {formatPrettyDate(consent.appointment.startAt)} with Dr.{' '}
+                    {consent.appointment.doctor?.fullName}
+                  </p>
+                ) : null}
+              </div>
+              <span className="compass-status-pill sent">active</span>
+            </article>
+          ))}
+        </div>
+      </article>
+
+      <article className="compass-card">
+        <h3>Audit Timeline</h3>
+        {(history || []).length === 0 ? <p className="muted">No audit entries yet.</p> : null}
+        <div className="compass-list">
+          {history.map((entry) => (
+            <article className="compass-row" key={entry.id}>
+              <div className="compass-row-main">
+                <h4>{entry.action}</h4>
+                <p>{entry.helper?.helperName || entry.patient?.fullName || 'Care helper context'}</p>
+                <p>{utcDateTime(entry.createdAt)}</p>
+              </div>
+              <span className={`compass-status-pill ${entry.isActive ? 'sent' : 'skipped'}`}>
+                {entry.isActive ? 'active' : 'closed'}
+              </span>
+            </article>
+          ))}
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function AsyncConsultsPage() {
+  const { user } = useSession();
+  const navigate = useNavigate();
+  const { data, error, loading, reload } = useApiPage('/api/async-consults');
+  const [doctors, setDoctors] = useState([]);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [delegatedPatients, setDelegatedPatients] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [createMessage, setCreateMessage] = useState('');
+  const [form, setForm] = useState({
+    patientId: '',
+    doctorId: '',
+    familyMemberId: '',
+    appointmentId: '',
+    subject: '',
+    symptoms: '',
+    preferredLanguage: 'Hindi',
+    priority: 'medium'
+  });
+
+  useEffect(() => {
+    if (user.role !== 'patient' && user.role !== 'help_worker') return;
+
+    const loadContext = async () => {
+      try {
+        const [doctorsRes, contextRes, appointmentsRes] = await Promise.all([
+          apiRequest('/api/doctors'),
+          user.role === 'patient' ? apiRequest('/api/patients/workspace') : apiRequest('/api/support/consents'),
+          apiRequest('/api/appointments')
+        ]);
+
+        if (doctorsRes.ok) {
+          const loadedDoctors = doctorsRes.data?.doctors || [];
+          setDoctors(loadedDoctors);
+          if (!form.doctorId && loadedDoctors.length) {
+            setForm((prev) => ({ ...prev, doctorId: loadedDoctors[0].id }));
+          }
+        }
+
+        if (user.role === 'patient') {
+          setDelegatedPatients([]);
+          if (contextRes.ok) {
+            setFamilyMembers(contextRes.data?.user?.familyMembers || []);
+          }
+        } else {
+          setFamilyMembers([]);
+          const patientMap = new Map();
+          (contextRes.data?.activeConsents || []).forEach((consent) => {
+            const patient = consent?.patient;
+            if (patient?.id && !patientMap.has(patient.id)) {
+              patientMap.set(patient.id, { id: patient.id, fullName: patient.fullName || 'Patient' });
+            }
+          });
+
+          const scopedPatients = [...patientMap.values()];
+          setDelegatedPatients(scopedPatients);
+          if (scopedPatients.length && !form.patientId) {
+            setForm((prev) => ({ ...prev, patientId: scopedPatients[0].id }));
+          }
+        }
+
+        if (appointmentsRes.ok) {
+          setAppointments((appointmentsRes.data?.upcomingAppointments || []).slice(0, 20));
+        }
+      } catch (_err) {
+        setCreateMessage('Could not load full consult form options. You can still continue.');
+      }
+    };
+
+    loadContext();
+  }, [form.doctorId, user.role]);
+
+  const submitAsyncConsult = async (event) => {
+    event.preventDefault();
+    setCreateMessage('');
+
+    const payload = user.role === 'help_worker' ? form : { ...form, patientId: '' };
+
+    const res = await apiRequest('/api/async-consults', {
+      method: 'POST',
+      body: payload
+    });
+
+    if (!res.ok) {
+      setCreateMessage(res.data?.error || 'Unable to start async consult.');
+      return;
+    }
+
+    if (res.data?.redirectTo) {
+      navigate(res.data.redirectTo);
+      return;
+    }
+
+    setCreateMessage('Async consult started.');
+    reload();
+  };
+
+  if (loading) return <p className="muted">Loading asynchronous consults...</p>;
+  if (error) return <p className="error">{error}</p>;
+
+  const consultations = data?.consultations || [];
+  const stats = data?.queueStats || { total: 0, waitingDoctor: 0, waitingPatient: 0, closed: 0 };
+  const messageIsError = /unable|error|could not|do not have|select/i.test(String(createMessage || '').toLowerCase());
+
+  return (
+    <section className="compass-shell">
+      <header className="compass-hero">
+        <p className="kicker">Digital Sanctuary</p>
+        <h2>{user.role === 'doctor' ? 'Asynchronous Consult Queue' : 'Asynchronous Consult'}</h2>
+        <p>When calls are not possible, continue care through clear messages and step-by-step updates.</p>
+      </header>
+
+      {data?.unsupported ? <p className="error">Async consult tables are missing. Apply the latest migration.</p> : null}
+      {data?.guidance ? <p className="muted">{data.guidance}</p> : null}
+
+      <section className="compass-metric-grid">
+        <article className="compass-metric-card">
+          <h3>Total</h3>
+          <strong>{stats.total}</strong>
+        </article>
+        <article className="compass-metric-card accent">
+          <h3>Waiting Doctor</h3>
+          <strong>{stats.waitingDoctor}</strong>
+        </article>
+        <article className="compass-metric-card">
+          <h3>Waiting Patient</h3>
+          <strong>{stats.waitingPatient}</strong>
+        </article>
+        <article className="compass-metric-card">
+          <h3>Closed</h3>
+          <strong>{stats.closed}</strong>
+        </article>
+      </section>
+
+      {user.role === 'patient' || user.role === 'help_worker' ? (
+        <article className="compass-card">
+          <h3>{user.role === 'help_worker' ? 'Step 1: Start a Delegated Async Consult' : 'Step 1: Start a New Async Consult'}</h3>
+          <form className="compass-form" onSubmit={submitAsyncConsult}>
+            {user.role === 'help_worker' ? (
+              <>
+                <label>
+                  Delegated patient
+                  <select
+                    value={form.patientId}
+                    onChange={(e) => setForm((prev) => ({ ...prev, patientId: e.target.value }))}
+                    required
+                  >
+                    <option value="" disabled>Choose patient</option>
+                    {delegatedPatients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {delegatedPatients.length === 0 ? (
+                  <p className="muted">No delegated patients found. Ask a patient to grant active async-consult consent first.</p>
+                ) : null}
+              </>
+            ) : null}
+
+            <label>
+              Select doctor
+              <select value={form.doctorId} onChange={(e) => setForm((prev) => ({ ...prev, doctorId: e.target.value }))} required>
+                <option value="" disabled>Choose doctor</option>
+                {doctors.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    Dr. {doctor.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {user.role === 'patient' ? (
+              <label>
+                For whom
+                <select
+                  value={form.familyMemberId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, familyMemberId: e.target.value }))}
+                >
+                  <option value="">Myself</option>
+                  {familyMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <label>
+              Link appointment (optional)
+              <select
+                value={form.appointmentId}
+                onChange={(e) => setForm((prev) => ({ ...prev, appointmentId: e.target.value }))}
+              >
+                <option value="">No linked appointment</option>
+                {appointments.map((appointment) => (
+                  <option key={appointment.id} value={appointment.id}>
+                    {formatPrettyDate(appointment.startAt)} - Dr. {appointment.doctor?.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Subject
+              <input
+                value={form.subject}
+                onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                placeholder="Example: Night fever and weakness"
+                required
+              />
+            </label>
+
+            <label>
+              Symptoms and details
+              <textarea
+                value={form.symptoms}
+                onChange={(e) => setForm((prev) => ({ ...prev, symptoms: e.target.value }))}
+                rows={5}
+                required
+              />
+            </label>
+
+            <div className="compass-inline-grid">
+              <label>
+                Preferred language
+                <input
+                  value={form.preferredLanguage}
+                  onChange={(e) => setForm((prev) => ({ ...prev, preferredLanguage: e.target.value }))}
+                />
+              </label>
+
+              <label>
+                Priority
+                <select value={form.priority} onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </div>
+
+            <button type="submit" className="compass-action-btn small" disabled={user.role === 'help_worker' && !delegatedPatients.length}>
+              Send to Doctor
+            </button>
+            {createMessage ? <p className={messageIsError ? 'error' : 'success'}>{createMessage}</p> : null}
+          </form>
+        </article>
+      ) : null}
+
+      <article className="compass-card">
+        <h3>Step 2: Continue Existing Threads</h3>
+        {consultations.length === 0 ? <p className="muted">No async consults in your queue.</p> : null}
+        <div className="compass-list">
+          {consultations.map((consult) => (
+            <article className="compass-row" key={consult.id}>
+              <div className="compass-row-main">
+                <h4>{consult.subject}</h4>
+                <p>
+                  {user.role === 'doctor'
+                    ? `Patient: ${consult.patient?.fullName || 'Unknown'}`
+                    : user.role === 'help_worker'
+                      ? `Patient: ${consult.patient?.fullName || 'Unknown'} • Doctor: Dr. ${consult.doctor?.fullName || 'Unknown'}`
+                      : `Doctor: Dr. ${consult.doctor?.fullName || 'Unknown'}`}
+                </p>
+                <p>
+                  Last update: {utcDateTime(consult.latestMessageAt)} • Replies: {consult._count?.replies || 0}
+                </p>
+                {consult.replies?.[0]?.message ? <p>Latest: {consult.replies[0].message}</p> : null}
+              </div>
+              <div className="compass-row-actions">
+                <span className={`compass-status-pill ${String(consult.status || '').toLowerCase()}`}>{consult.status}</span>
+                <span className={`compass-presence ${consult.presence?.doctorOnline || consult.presence?.patientOnline ? 'online' : 'offline'}`}>
+                  {consult.presence?.doctorOnline || consult.presence?.patientOnline ? 'Peer online' : 'Peer offline'}
+                </span>
+                <Link className="compass-link-btn" to={`/async-consults/${consult.id}`}>
+                  Open
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function AsyncConsultDetailPage() {
+  const { consultId } = useParams();
+  const { user } = useSession();
+  const { data, setData, error, loading, reload } = useApiPage(`/api/async-consults/${consultId}`);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [closeReason, setCloseReason] = useState('');
+  const [feedback, setFeedback] = useState('');
+
+  useEffect(() => {
+    if (!consultId) return undefined;
+
+    const tick = async () => {
+      try {
+        await apiRequest('/api/users/presence/ping', { method: 'POST' });
+        const res = await apiRequest(`/api/async-consults/${consultId}`);
+        if (res.ok) {
+          setData(res.data);
+        }
+      } catch (_err) {
+        // silent retry loop for low-connectivity environments
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, user.role === 'doctor' ? 15000 : 20000);
+    return () => clearInterval(timer);
+  }, [consultId, setData, user.role]);
+
+  const sendReply = async (event) => {
+    event.preventDefault();
+    setFeedback('');
+
+    const text = String(replyMessage || '').trim();
+    if (!text) {
+      setFeedback('Reply message is required.');
+      return;
+    }
+
+    const res = await apiRequest(`/api/async-consults/${consultId}/replies`, {
+      method: 'POST',
+      body: { message: text }
+    });
+
+    if (!res.ok) {
+      setFeedback(res.data?.error || 'Could not send reply.');
+      return;
+    }
+
+    setFeedback('Reply sent.');
+    setReplyMessage('');
+    if (res.data?.consult) {
+      setData((prev) => ({ ...(prev || {}), consult: res.data.consult, presence: res.data.presence }));
+      return;
+    }
+    reload();
+  };
+
+  const closeThread = async () => {
+    setFeedback('');
+
+    const res = await apiRequest(`/api/async-consults/${consultId}/close`, {
+      method: 'POST',
+      body: { reason: closeReason }
+    });
+
+    if (!res.ok) {
+      setFeedback(res.data?.error || 'Could not close conversation.');
+      return;
+    }
+
+    setFeedback('Conversation closed.');
+    reload();
+  };
+
+  if (loading) return <p className="muted">Loading async consult thread...</p>;
+  if (error) return <p className="error">{error}</p>;
+  if (!data?.consult) return <p className="error">Async consult not found.</p>;
+
+  const consult = data.consult;
+  const presence = data.presence || { doctorOnline: false, patientOnline: false };
+  const peerOnline = user.role === 'doctor' ? presence.patientOnline : presence.doctorOnline;
+
+  return (
+    <section className="compass-shell">
+      <header className="compass-hero">
+        <p className="kicker">Guided Conversation</p>
+        <h2>{consult.subject}</h2>
+        <p>
+          {user.role === 'doctor'
+            ? `Patient: ${consult.patient?.fullName || 'Unknown'}`
+            : user.role === 'help_worker'
+              ? `Patient: ${consult.patient?.fullName || 'Unknown'} • Doctor: Dr. ${consult.doctor?.fullName || 'Unknown'}`
+              : `Doctor: Dr. ${consult.doctor?.fullName || 'Unknown'}`}
+        </p>
+        <div className="compass-inline-status">
+          <span className={`compass-status-pill ${String(consult.status || '').toLowerCase()}`}>{consult.status}</span>
+          <span className={`compass-presence ${peerOnline ? 'online' : 'offline'}`}>
+            {peerOnline ? 'Peer online now' : 'Peer offline'}
+          </span>
+        </div>
+        <Link className="compass-link-btn" to={`/ai-copilot?appointmentId=${consult.appointmentId || ''}`}>
+          Open AI triage & translation tools
+        </Link>
+      </header>
+
+      {feedback ? <p className={feedback.toLowerCase().includes('could not') ? 'error' : 'success'}>{feedback}</p> : null}
+
+      <article className="compass-card">
+        <h3>Conversation Timeline</h3>
+        <div className="compass-chat-thread">
+          {(consult.replies || []).map((reply) => {
+            const mine = reply.authorId === user.id;
+            return (
+              <article className={`compass-chat-bubble ${mine ? 'mine' : ''}`} key={reply.id}>
+                <p className="compass-chat-meta">
+                  {reply.authorName || reply.authorRole} - {utcDateTime(reply.createdAt)}
+                </p>
+                <p>{reply.message}</p>
+              </article>
+            );
+          })}
+        </div>
+      </article>
+
+      {consult.status !== 'closed' ? (
+        <article className="compass-card">
+          <h3>Next Step</h3>
+          <form className="compass-form" onSubmit={sendReply}>
+            <label>
+              Message
+              <textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={4} required />
+            </label>
+            <button type="submit" className="compass-action-btn small">
+              <span className="material-symbols-outlined" aria-hidden="true">send</span>
+              Send Reply
+            </button>
+          </form>
+
+          <div className="compass-close-stack">
+            <label>
+              Close reason (optional)
+              <input value={closeReason} onChange={(e) => setCloseReason(e.target.value)} />
+            </label>
+            <button type="button" className="compass-action-btn small subtle" onClick={closeThread}>
+              <span className="material-symbols-outlined" aria-hidden="true">task_alt</span>
+              Close Conversation
+            </button>
+          </div>
+        </article>
+      ) : (
+        <p className="success">This asynchronous consult is closed.</p>
+      )}
+    </section>
   );
 }
 

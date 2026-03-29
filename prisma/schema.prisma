@@ -11,6 +11,7 @@ enum Role {
   patient
   doctor
   admin
+  help_worker
 }
 
 enum SlotStatus {
@@ -26,6 +27,14 @@ enum AppointmentStatus {
   no_show
 }
 
+enum TriageLevel {
+  unknown
+  low
+  moderate
+  high
+  critical
+}
+
 enum ConsultationMode {
   video
   audio
@@ -37,6 +46,39 @@ enum CallSessionStatus {
   in_progress
   ended
   failed
+}
+
+enum ReminderChannel {
+  sms
+  whatsapp
+}
+
+enum ReminderStatus {
+  scheduled
+  sent
+  failed
+  skipped
+}
+
+enum DelegationScope {
+  appointment
+  async_consult
+  records
+  all
+}
+
+enum AsyncConsultStatus {
+  open
+  waiting_doctor
+  waiting_patient
+  closed
+}
+
+enum AsyncAuthorRole {
+  patient
+  doctor
+  helper
+  system
 }
 
 model User {
@@ -71,6 +113,16 @@ model User {
 
   doctorReviewsReceived DoctorReview[] @relation("doctor_reviews_received")
   doctorReviewsWritten  DoctorReview[] @relation("doctor_reviews_written")
+
+  reminderJobs          ReminderJob[]     @relation("patient_reminders")
+  careSupportLinks      CareSupportLink[] @relation("care_support_patient")
+  createdSupportLinks   CareSupportLink[] @relation("care_support_creator")
+  consentAuditAsPatient ConsentAudit[]    @relation("consent_patient")
+  consentAuditActions   ConsentAudit[]    @relation("consent_granted_by")
+
+  patientAsyncConsults  AsyncConsult[]    @relation("async_consults_patient")
+  doctorAsyncConsults   AsyncConsult[]    @relation("async_consults_doctor")
+  asyncRepliesAuthored  AsyncConsultReply[] @relation("async_reply_author")
 }
 
 model PatientProfile {
@@ -129,6 +181,8 @@ model Appointment {
 
   problemDescription String?
   medicationsText    String?
+  triageLevel        TriageLevel       @default(unknown)
+  triageScore        Int               @default(0)
 
   slotId      String?  @unique
   slot        Slot?    @relation(fields: [slotId], references: [id], onDelete: SetNull)
@@ -137,10 +191,14 @@ model Appointment {
   prescription Prescription?
   documents   Document[]
   review      DoctorReview?
+  reminderJobs ReminderJob[]
+  consentAudits ConsentAudit[]
+  asyncConsults AsyncConsult[]
 
   @@index([doctorId, startAt])
   @@index([patientId, startAt])
   @@index([familyMemberId])
+  @@index([triageLevel])
 }
 
 model FamilyMember {
@@ -160,6 +218,7 @@ model FamilyMember {
 
   appointments      Appointment[]
   documents         Document[]
+  asyncConsults     AsyncConsult[]
 
   @@index([ownerPatientId, fullName])
 }
@@ -212,6 +271,11 @@ model Prescription {
   instructions  String?
   followUpAt    DateTime?
   notes         String?
+  pharmacyName  String?
+  pharmacyContact String?
+  handoffCode   String?
+
+  @@index([handoffCode])
 }
 
 model DoctorReview {
@@ -233,4 +297,129 @@ model DoctorReview {
 
   @@index([doctorId, createdAt])
   @@index([patientId, createdAt])
+}
+
+model ReminderJob {
+  id            String          @id @default(uuid())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  appointmentId String
+  appointment   Appointment     @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  patientId     String
+  patient       User            @relation("patient_reminders", fields: [patientId], references: [id], onDelete: Cascade)
+
+  channel       ReminderChannel @default(sms)
+  sendAt        DateTime
+  templateKey   String
+  payload       Json?
+  status        ReminderStatus  @default(scheduled)
+  attempts      Int             @default(0)
+  sentAt        DateTime?
+  failedAt      DateTime?
+  lastError     String?
+
+  @@index([status, sendAt])
+  @@index([patientId, sendAt])
+  @@index([appointmentId, sendAt])
+}
+
+model CareSupportLink {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  patientId         String
+  patient           User     @relation("care_support_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  createdById       String
+  createdBy         User     @relation("care_support_creator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  helperName        String
+  helperPhone       String
+  relationToPatient String?
+  village           String?
+  notes             String?
+  isActive          Boolean  @default(true)
+
+  consentAudits     ConsentAudit[]
+
+  @@index([patientId, helperName])
+  @@index([patientId, isActive])
+}
+
+model ConsentAudit {
+  id            String          @id @default(uuid())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  patientId     String
+  patient       User            @relation("consent_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  helperId      String?
+  helper        CareSupportLink? @relation(fields: [helperId], references: [id], onDelete: SetNull)
+
+  appointmentId String?
+  appointment   Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  scope         DelegationScope @default(appointment)
+  action        String
+  notes         String?
+  isActive      Boolean         @default(true)
+  revokedAt     DateTime?
+
+  grantedById   String
+  grantedBy     User            @relation("consent_granted_by", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@index([appointmentId])
+  @@index([isActive, scope])
+}
+
+model AsyncConsult {
+  id              String            @id @default(uuid())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  patientId       String
+  patient         User              @relation("async_consults_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId        String
+  doctor          User              @relation("async_consults_doctor", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  familyMemberId  String?
+  familyMember    FamilyMember?     @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  appointmentId   String?
+  appointment     Appointment?      @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  status          AsyncConsultStatus @default(open)
+  subject         String
+  symptoms        String
+  preferredLanguage String?
+  priority        String?
+  latestMessageAt DateTime          @default(now())
+
+  replies         AsyncConsultReply[]
+
+  @@index([doctorId, status, latestMessageAt])
+  @@index([patientId, status, latestMessageAt])
+}
+
+model AsyncConsultReply {
+  id            String         @id @default(uuid())
+  createdAt     DateTime       @default(now())
+
+  consultId     String
+  consult       AsyncConsult   @relation(fields: [consultId], references: [id], onDelete: Cascade)
+
+  authorRole    AsyncAuthorRole
+  authorId      String?
+  author        User?          @relation("async_reply_author", fields: [authorId], references: [id], onDelete: SetNull)
+  authorName    String?
+  message       String
+
+  @@index([consultId, createdAt])
+  @@index([authorId, createdAt])
 }

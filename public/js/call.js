@@ -15,8 +15,11 @@ const remoteVideo = document.getElementById('remoteVideo');
 const btnVideo = document.getElementById('btnVideo');
 const btnAudio = document.getElementById('btnAudio');
 const btnText = document.getElementById('btnText');
+const btnDataQuality = document.getElementById('btnDataQuality');
 const btnMute = document.getElementById('btnMute');
 const btnCamera = document.getElementById('btnCamera');
+const btnTranslateToggle = document.getElementById('btnTranslateToggle');
+const chatLanguageSelect = document.getElementById('chatLanguage');
 
 const chatLog = document.getElementById('chatLog');
 const chatForm = document.getElementById('chatForm');
@@ -33,6 +36,14 @@ let ignoreOffer = false;
 let isSettingRemoteAnswerPending = false;
 let reconnectDegradeTimer = null;
 const pendingIceCandidates = [];
+let hasShownDataSaverNotice = false;
+const QUALITY_PREFERENCE_KEY = 'call:qualityPreference';
+const CHAT_TRANSLATE_ENABLED_KEY = 'call:chatTranslateEnabled';
+const CHAT_TRANSLATE_LANGUAGE_KEY = 'call:chatTranslateLanguage';
+let qualityPreference = 'auto';
+let chatTranslationEnabled = false;
+let chatTargetLanguage = 'English';
+const translationCache = new Map();
 
 // Doctor acts as the stable offerer by default; patient is the polite peer.
 const isPolitePeer = cfg.userRole === 'patient';
@@ -49,6 +60,145 @@ function logRtc(event, details = {}) {
 
 function setStatus(s) {
   statusEl.textContent = s;
+}
+
+function connectionInfo() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  return {
+    effectiveType: connection && connection.effectiveType ? String(connection.effectiveType) : 'unknown',
+    saveData: Boolean(connection && connection.saveData)
+  };
+}
+
+function isDataSaverPreferred() {
+  try {
+    return window.localStorage.getItem('rural:dataSaver') === '1';
+  } catch (_err) {
+    return false;
+  }
+}
+
+function sanitizeQualityPreference(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'saver') return 'saver';
+  if (normalized === 'high') return 'high';
+  return 'auto';
+}
+
+function readQualityPreference() {
+  try {
+    const stored = window.localStorage.getItem(QUALITY_PREFERENCE_KEY);
+    if (stored) {
+      return sanitizeQualityPreference(stored);
+    }
+  } catch (_err) {}
+
+  return isDataSaverPreferred() ? 'saver' : 'auto';
+}
+
+function qualityLabel(preference) {
+  if (preference === 'saver') return 'Quality: Saver';
+  if (preference === 'high') return 'Quality: High';
+  return 'Quality: Auto';
+}
+
+function readChatTranslateEnabled() {
+  try {
+    return window.localStorage.getItem(CHAT_TRANSLATE_ENABLED_KEY) === '1';
+  } catch (_err) {
+    return false;
+  }
+}
+
+function readChatTargetLanguage() {
+  try {
+    const stored = String(window.localStorage.getItem(CHAT_TRANSLATE_LANGUAGE_KEY) || '').trim();
+    if (stored) return stored;
+  } catch (_err) {}
+
+  if (chatLanguageSelect && chatLanguageSelect.value) {
+    return String(chatLanguageSelect.value).trim();
+  }
+
+  return 'English';
+}
+
+function persistChatTranslationSettings() {
+  try {
+    window.localStorage.setItem(CHAT_TRANSLATE_ENABLED_KEY, chatTranslationEnabled ? '1' : '0');
+    window.localStorage.setItem(CHAT_TRANSLATE_LANGUAGE_KEY, chatTargetLanguage);
+  } catch (_err) {}
+}
+
+function updateTranslateLabel() {
+  if (!btnTranslateToggle) return;
+  setControlLabel(btnTranslateToggle, `Translate: ${chatTranslationEnabled ? 'On' : 'Off'}`);
+}
+
+function persistQualityPreference(preference) {
+  try {
+    window.localStorage.setItem(QUALITY_PREFERENCE_KEY, preference);
+    window.localStorage.setItem('rural:dataSaver', preference === 'saver' ? '1' : '0');
+  } catch (_err) {}
+}
+
+async function applyQualityPreference(preference, options = {}) {
+  const announce = options.announce !== false;
+  qualityPreference = sanitizeQualityPreference(preference);
+  persistQualityPreference(qualityPreference);
+
+  if (btnDataQuality) {
+    setControlLabel(btnDataQuality, qualityLabel(qualityPreference));
+  }
+
+  if (announce) {
+    appendChat(`[System] ${qualityLabel(qualityPreference)} selected.`);
+  }
+
+  if (qualityPreference === 'saver' && currentMode === 'video') {
+    appendChat('[System] Data Saver selected. Switching to audio to reduce data usage.');
+    await startMode('audio');
+  }
+}
+
+async function cycleQualityPreference() {
+  const order = ['auto', 'saver', 'high'];
+  const idx = Math.max(0, order.indexOf(qualityPreference));
+  const next = order[(idx + 1) % order.length];
+  await applyQualityPreference(next, { announce: true });
+}
+
+function isWeakNetwork() {
+  const info = connectionInfo();
+  if (!navigator.onLine) return true;
+  return info.effectiveType === 'slow-2g' || info.effectiveType === '2g';
+}
+
+function updateConnectivityHint() {
+  const info = connectionInfo();
+
+  if (!navigator.onLine) {
+    setStatus('offline');
+    appendChat('[System] You are offline. Reconnecting automatically...');
+    scheduleAutoDowngrade('offline');
+    return;
+  }
+
+  if (isWeakNetwork()) {
+    setStatus(`weak_network:${info.effectiveType}`);
+    appendChat('[System] Weak connection detected. Audio or text mode is recommended.');
+    scheduleAutoDowngrade('low_bandwidth');
+    return;
+  }
+
+  if (info.saveData) {
+    setStatus(`data_saver:${info.effectiveType}`);
+    return;
+  }
+
+  if (statusEl.textContent === 'offline' || statusEl.textContent.startsWith('weak_network')) {
+    setStatus('connected');
+  }
 }
 
 function setControlLabel(button, label) {
@@ -133,7 +283,41 @@ function roleLabel(role) {
   if (normalized === 'doctor') return 'Doctor';
   if (normalized === 'patient') return 'Patient';
   if (normalized === 'admin') return 'Admin';
+  if (normalized === 'help_worker') return 'Helper';
+  if (normalized === 'helper') return 'Helper';
   return 'Participant';
+}
+
+async function translateTextForChat(text, targetLanguage) {
+  const sourceText = String(text || '').trim();
+  const target = String(targetLanguage || '').trim();
+
+  if (!sourceText || !target) return sourceText;
+
+  const cacheKey = `${target.toLowerCase()}::${sourceText}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey);
+  }
+
+  const res = await fetch('/api/ai/translate-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      appointmentId: cfg.appointmentId,
+      text: sourceText,
+      targetLanguage: target,
+      sourceLanguage: 'auto'
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error('translation_request_failed');
+  }
+
+  const payload = await res.json();
+  const translated = String(payload?.result?.translatedText || sourceText).trim() || sourceText;
+  translationCache.set(cacheKey, translated);
+  return translated;
 }
 
 function ensureSocket() {
@@ -228,8 +412,20 @@ function ensureSocket() {
     }
   });
 
-  socket.on('chat', ({ fromRole, message, at }) => {
+  socket.on('chat', async ({ fromRole, message, at }) => {
     appendChat(`[${new Date(at).toLocaleTimeString()}] ${roleLabel(fromRole)}: ${message}`);
+
+    const incomingFromPeer = String(fromRole || '').toLowerCase() !== String(cfg.userRole || '').toLowerCase();
+    if (!chatTranslationEnabled || !incomingFromPeer) return;
+
+    try {
+      const translated = await translateTextForChat(message, chatTargetLanguage);
+      if (translated && translated !== message) {
+        appendChat(`[Translated ${chatTargetLanguage}] ${translated}`);
+      }
+    } catch (_err) {
+      appendChat('[System] Translation unavailable. Showing original message only.');
+    }
   });
 
   return socket;
@@ -246,7 +442,23 @@ async function setupLocalMedia(mode) {
   const constraints =
     mode === 'audio'
       ? { audio: true, video: false }
-      : { audio: true, video: { width: { ideal: 640 }, height: { ideal: 360 } } };
+      : qualityPreference === 'high'
+        ? {
+            audio: true,
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30, max: 30 }
+            }
+          }
+        : {
+            audio: true,
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 360 },
+              frameRate: { ideal: 15, max: 24 }
+            }
+          };
 
   localStream = await navigator.mediaDevices.getUserMedia(constraints);
   localVideo.srcObject = localStream;
@@ -324,6 +536,17 @@ async function maybeMakeOffer() {
 async function startMode(mode) {
   clearDegradeTimer();
 
+  if (
+    mode === 'video' &&
+    (qualityPreference === 'saver' || (qualityPreference !== 'high' && (isDataSaverPreferred() || connectionInfo().saveData)))
+  ) {
+    if (!hasShownDataSaverNotice) {
+      appendChat('[System] Data saver enabled. Starting in audio mode to reduce data usage.');
+      hasShownDataSaverNotice = true;
+    }
+    mode = 'audio';
+  }
+
   if (currentMode !== mode) {
     disposePeerConnection();
     stopLocalMedia();
@@ -367,6 +590,13 @@ async function startMode(mode) {
 btnVideo.addEventListener('click', () => startMode('video'));
 btnAudio.addEventListener('click', () => startMode('audio'));
 btnText.addEventListener('click', () => startMode('text'));
+if (btnDataQuality) {
+  btnDataQuality.addEventListener('click', () => {
+    cycleQualityPreference().catch((e) => {
+      console.error('[CALL][RTC] quality toggle failed', e);
+    });
+  });
+}
 
 btnMute.addEventListener('click', () => {
   if (!localStream) return;
@@ -386,13 +616,62 @@ btnCamera.addEventListener('click', () => {
   setControlLabel(btnCamera, isCameraOff ? 'Camera on' : 'Camera');
 });
 
-chatForm.addEventListener('submit', (e) => {
+chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const message = String(chatInput.value || '').trim();
   if (!message) return;
-  ensureSocket().emit('chat', { appointmentId: cfg.appointmentId, message });
+
+  let outgoingMessage = message;
+  if (chatTranslationEnabled) {
+    try {
+      outgoingMessage = await translateTextForChat(message, chatTargetLanguage);
+    } catch (_err) {
+      appendChat('[System] Could not translate outgoing message. Sending original text.');
+      outgoingMessage = message;
+    }
+  }
+
+  ensureSocket().emit('chat', { appointmentId: cfg.appointmentId, message: outgoingMessage });
+
+  if (chatTranslationEnabled && outgoingMessage !== message) {
+    appendChat(`[System] Sent in ${chatTargetLanguage}: ${outgoingMessage}`);
+  }
+
   chatInput.value = '';
 });
 
+if (btnTranslateToggle) {
+  btnTranslateToggle.addEventListener('click', () => {
+    chatTranslationEnabled = !chatTranslationEnabled;
+    persistChatTranslationSettings();
+    updateTranslateLabel();
+    appendChat(`[System] Chat translation ${chatTranslationEnabled ? 'enabled' : 'disabled'}.`);
+  });
+}
+
+if (chatLanguageSelect) {
+  chatLanguageSelect.addEventListener('change', () => {
+    chatTargetLanguage = String(chatLanguageSelect.value || 'English').trim() || 'English';
+    persistChatTranslationSettings();
+    appendChat(`[System] Target chat language set to ${chatTargetLanguage}.`);
+  });
+}
+
 // Auto-start the configured mode.
+qualityPreference = readQualityPreference();
+applyQualityPreference(qualityPreference, { announce: false }).catch(() => {});
+chatTranslationEnabled = readChatTranslateEnabled();
+chatTargetLanguage = readChatTargetLanguage();
+if (chatLanguageSelect && chatTargetLanguage) {
+  chatLanguageSelect.value = chatTargetLanguage;
+}
+updateTranslateLabel();
 startMode(cfg.defaultMode);
+
+window.addEventListener('online', updateConnectivityHint);
+window.addEventListener('offline', updateConnectivityHint);
+
+const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+connection?.addEventListener?.('change', updateConnectivityHint);
+
+updateConnectivityHint();

@@ -102,6 +102,14 @@ async function main() {
     phone: '7777777777'
   });
 
+  await upsertUser({
+    email: 'helper1@example.com',
+    password: 'Password123!',
+    role: 'help_worker',
+    fullName: 'Community Help Worker',
+    phone: '9999990001'
+  });
+
   // Create a few default slots for doctors (next day 9:00-11:00 UTC)
   const doctors = await prisma.user.findMany({ where: { role: 'doctor' } });
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);

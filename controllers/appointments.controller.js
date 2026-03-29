@@ -1,6 +1,7 @@
 const { prisma } = require('../models/db');
 const { bookSchema, preconsultSchema, reviewSchema } = require('../models/schemas/appointments.schemas');
 const { getAppointmentPresence } = require('../services/presence.service');
+const { scheduleRemindersForAppointment, cancelScheduledRemindersForAppointment } = require('../services/reminder.service');
 
 function isMissingDoctorReviewTable(error) {
   return Boolean(
@@ -10,6 +11,74 @@ function isMissingDoctorReviewTable(error) {
         .toLowerCase()
         .includes('doctorreview')
   );
+}
+
+function normalizePhone(value) {
+  return String(value || '')
+    .replace(/[^0-9]/g, '')
+    .trim();
+}
+
+function buildHelperPhoneWhere(phone) {
+  const raw = String(phone || '').trim();
+  const normalized = normalizePhone(phone);
+  const tail10 = normalized.length >= 10 ? normalized.slice(-10) : '';
+
+  const where = [];
+  if (raw) where.push({ helperPhone: raw });
+  if (normalized) where.push({ helperPhone: normalized });
+  if (tail10) where.push({ helperPhone: { endsWith: tail10 } });
+  return where;
+}
+
+async function getHelperAppointmentScope(user) {
+  const phoneWhere = buildHelperPhoneWhere(user.phone);
+  if (!phoneWhere.length) {
+    return { patientIds: [], appointmentIds: [] };
+  }
+
+  const helperLinks = await prisma.careSupportLink.findMany({
+    where: {
+      isActive: true,
+      OR: phoneWhere
+    },
+    select: { id: true }
+  });
+
+  if (!helperLinks.length) {
+    return { patientIds: [], appointmentIds: [] };
+  }
+
+  const helperIds = helperLinks.map((row) => row.id);
+  const consentRows = await prisma.consentAudit.findMany({
+    where: {
+      helperId: { in: helperIds },
+      isActive: true,
+      scope: { in: ['all', 'appointment'] }
+    },
+    select: {
+      patientId: true,
+      appointmentId: true,
+      scope: true
+    }
+  });
+
+  const patientIds = new Set();
+  const appointmentIds = new Set();
+
+  consentRows.forEach((row) => {
+    if (row.scope === 'all' || (row.scope === 'appointment' && !row.appointmentId)) {
+      if (row.patientId) patientIds.add(row.patientId);
+    }
+    if (row.scope === 'appointment' && row.appointmentId) {
+      appointmentIds.add(row.appointmentId);
+    }
+  });
+
+  return {
+    patientIds: [...patientIds],
+    appointmentIds: [...appointmentIds]
+  };
 }
 
 async function ensureAppointmentAccess(appointmentId, user) {
@@ -45,6 +114,13 @@ async function ensureAppointmentAccess(appointmentId, user) {
 
   if (!appt) return null;
   if (user.role === 'admin') return appt;
+  if (user.role === 'help_worker') {
+    const scope = await getHelperAppointmentScope(user);
+    const canViewByPatient = scope.patientIds.includes(appt.patientId);
+    const canViewByAppointment = scope.appointmentIds.includes(appt.id);
+    if (!canViewByPatient && !canViewByAppointment) return null;
+    return appt;
+  }
   if (user.id !== appt.patientId && user.id !== appt.doctorId) return null;
   return appt;
 }
@@ -124,6 +200,27 @@ function computeTriage(problemDescription) {
   return { level: 'low', score, label: 'Low' };
 }
 
+const TRIAGE_LABELS = {
+  unknown: 'Not assessed',
+  low: 'Low',
+  moderate: 'Moderate',
+  high: 'High',
+  critical: 'Critical'
+};
+
+function getAppointmentTriage(appointment) {
+  const level = String(appointment?.triageLevel || '').toLowerCase();
+  const score = Number(appointment?.triageScore);
+  if (TRIAGE_LABELS[level] && Number.isFinite(score)) {
+    return {
+      level,
+      score,
+      label: TRIAGE_LABELS[level]
+    };
+  }
+  return computeTriage(appointment?.problemDescription);
+}
+
 function buildReminderInfo(startAt) {
   const now = Date.now();
   const startMs = new Date(startAt).getTime();
@@ -142,6 +239,61 @@ function buildReminderInfo(startAt) {
     return { dueSoon: true, label: 'Reminder: starts within 24 hours', minutesUntil: diffMins };
   }
   return { dueSoon: false, label: 'No reminder yet', minutesUntil: diffMins };
+}
+
+function deriveRegion(address) {
+  const raw = String(address || '').trim();
+  if (!raw) return 'Unknown';
+  const parts = raw.split(',').map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return 'Unknown';
+  return parts[parts.length - 1].slice(0, 40) || 'Unknown';
+}
+
+async function loadAdminOperationalMetrics() {
+  const startedAt = Date.now();
+  let databaseStatus = 'up';
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (_err) {
+    databaseStatus = 'down';
+  }
+
+  let reminderQueueDepth = null;
+  let asyncQueueDepth = null;
+  let failedReminders24h = null;
+
+  try {
+    reminderQueueDepth = await prisma.reminderJob.count({ where: { status: 'scheduled' } });
+    failedReminders24h = await prisma.reminderJob.count({
+      where: {
+        status: 'failed',
+        failedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+      }
+    });
+  } catch (_err) {
+    reminderQueueDepth = null;
+    failedReminders24h = null;
+  }
+
+  try {
+    asyncQueueDepth = await prisma.asyncConsult.count({
+      where: {
+        status: { in: ['open', 'waiting_doctor', 'waiting_patient'] }
+      }
+    });
+  } catch (_err) {
+    asyncQueueDepth = null;
+  }
+
+  return {
+    readiness: databaseStatus === 'up' ? 'ready' : 'degraded',
+    databaseStatus,
+    dbLatencyMs: Math.max(0, Date.now() - startedAt),
+    reminderQueueDepth,
+    asyncQueueDepth,
+    failedReminders24h
+  };
 }
 
 async function renderAppointmentPage(res, reqUser, appointment, opts = {}) {
@@ -163,7 +315,7 @@ async function renderAppointmentPage(res, reqUser, appointment, opts = {}) {
     history,
     workspaceDocuments,
     familyMembers,
-    triage: computeTriage(appointment.problemDescription),
+    triage: getAppointmentTriage(appointment),
     reminder: buildReminderInfo(appointment.startAt),
     error: opts.error || null,
     message: opts.message || null
@@ -173,12 +325,23 @@ async function renderAppointmentPage(res, reqUser, appointment, opts = {}) {
 const appointmentsController = {
   listMyAppointments: async (req, res, next) => {
     try {
-      const where =
-        req.user.role === 'doctor'
-          ? { doctorId: req.user.id }
-          : req.user.role === 'patient'
-            ? { patientId: req.user.id }
-            : {};
+      let where;
+
+      if (req.user.role === 'doctor') {
+        where = { doctorId: req.user.id };
+      } else if (req.user.role === 'patient') {
+        where = { patientId: req.user.id };
+      } else if (req.user.role === 'help_worker') {
+        const scope = await getHelperAppointmentScope(req.user);
+        const clauses = [];
+        if (scope.patientIds.length) clauses.push({ patientId: { in: scope.patientIds } });
+        if (scope.appointmentIds.length) clauses.push({ id: { in: scope.appointmentIds } });
+        where = clauses.length ? { OR: clauses } : { id: '__no_access__' };
+      } else if (req.user.role === 'admin') {
+        where = {};
+      } else {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
 
       let appointments;
       try {
@@ -215,7 +378,7 @@ const appointmentsController = {
         .filter((a) => a.status === 'booked' && new Date(a.startAt) >= now)
         .map((a) => ({
           ...a,
-          triage: computeTriage(a.problemDescription),
+          triage: getAppointmentTriage(a),
           reminder: buildReminderInfo(a.startAt)
         }))
         .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
@@ -224,7 +387,7 @@ const appointmentsController = {
         .filter((a) => !(a.status === 'booked' && new Date(a.startAt) >= now))
         .map((a) => ({
           ...a,
-          triage: computeTriage(a.problemDescription),
+          triage: getAppointmentTriage(a),
           reminder: buildReminderInfo(a.startAt)
         }))
         .sort((a, b) => new Date(b.startAt) - new Date(a.startAt));
@@ -319,6 +482,8 @@ const appointmentsController = {
         return appt;
       });
 
+      await scheduleRemindersForAppointment(result.id).catch(() => {});
+
       return res.redirect(`/appointments/${result.id}`);
     } catch (e) {
       if (req.accepts('html')) {
@@ -354,12 +519,15 @@ const appointmentsController = {
       }
 
       let updated;
+      const triage = computeTriage(parsed.data.problemDescription);
       try {
         updated = await prisma.appointment.update({
           where: { id: appointmentId },
           data: {
             problemDescription: parsed.data.problemDescription || null,
-            medicationsText: parsed.data.medicationsText || null
+            medicationsText: parsed.data.medicationsText || null,
+            triageLevel: triage.level,
+            triageScore: triage.score
           },
           include: {
             doctor: { include: { doctorProfile: true } },
@@ -375,7 +543,9 @@ const appointmentsController = {
           where: { id: appointmentId },
           data: {
             problemDescription: parsed.data.problemDescription || null,
-            medicationsText: parsed.data.medicationsText || null
+            medicationsText: parsed.data.medicationsText || null,
+            triageLevel: triage.level,
+            triageScore: triage.score
           },
           include: {
             doctor: { include: { doctorProfile: true } },
@@ -460,22 +630,36 @@ const appointmentsController = {
 
   viewImpactDashboard: async (req, res, next) => {
     try {
-      const where =
-        req.user.role === 'doctor'
-          ? { doctorId: req.user.id }
-          : req.user.role === 'patient'
-            ? { patientId: req.user.id }
-            : {};
+      let where;
+      if (req.user.role === 'doctor') {
+        where = { doctorId: req.user.id };
+      } else if (req.user.role === 'patient') {
+        where = { patientId: req.user.id };
+      } else if (req.user.role === 'help_worker') {
+        const scope = await getHelperAppointmentScope(req.user);
+        const clauses = [];
+        if (scope.patientIds.length) clauses.push({ patientId: { in: scope.patientIds } });
+        if (scope.appointmentIds.length) clauses.push({ id: { in: scope.appointmentIds } });
+        where = clauses.length ? { OR: clauses } : { id: '__no_access__' };
+      } else if (req.user.role === 'admin') {
+        where = {};
+      } else {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
 
       const appointments = await prisma.appointment.findMany({
         where,
         include: {
+          doctor: { select: { id: true, fullName: true } },
+          patient: { select: { id: true, address: true } },
           prescription: { select: { followUpAt: true } },
           callSession: { select: { startedAt: true, endedAt: true } }
         },
         orderBy: { startAt: 'desc' },
         take: 400
       });
+
+      const operational = req.user.role === 'admin' ? await loadAdminOperationalMetrics() : null;
 
       const statusCounts = { booked: 0, completed: 0, cancelled: 0, no_show: 0 };
       let urgentCount = 0;
@@ -484,14 +668,56 @@ const appointmentsController = {
       let totalDurationMins = 0;
       let durationSamples = 0;
 
+      const modeCounts = { video: 0, audio: 0, text: 0 };
+      const uniquePatients = new Set();
+      const doctorAggregate = new Map();
+      const regionAggregate = new Map();
+      const dailyTotals = {};
+      const modeKpis = {
+        video: { total: 0, completed: 0, noShow: 0 },
+        audio: { total: 0, completed: 0, noShow: 0 },
+        text: { total: 0, completed: 0, noShow: 0 }
+      };
+
       const now = Date.now();
       const next14Days = now + 14 * 24 * 60 * 60 * 1000;
 
+      for (let i = 13; i >= 0; i -= 1) {
+        const day = new Date(now - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        dailyTotals[day] = 0;
+      }
+
       for (const appointment of appointments) {
         statusCounts[appointment.status] = (statusCounts[appointment.status] || 0) + 1;
+        modeCounts[appointment.mode] = (modeCounts[appointment.mode] || 0) + 1;
+        uniquePatients.add(appointment.patientId);
 
-        const triage = computeTriage(appointment.problemDescription);
+        const dayKey = new Date(appointment.startAt).toISOString().slice(0, 10);
+        if (Object.prototype.hasOwnProperty.call(dailyTotals, dayKey)) {
+          dailyTotals[dayKey] += 1;
+        }
+
+        const triage = getAppointmentTriage(appointment);
         if (triage.level === 'critical' || triage.level === 'high') urgentCount += 1;
+
+        const modeRow = modeKpis[appointment.mode] || modeKpis.video;
+        modeRow.total += 1;
+        if (appointment.status === 'completed') modeRow.completed += 1;
+        if (appointment.status === 'no_show') modeRow.noShow += 1;
+
+        const region = deriveRegion(appointment.patient?.address);
+        if (!regionAggregate.has(region)) {
+          regionAggregate.set(region, {
+            region,
+            total: 0,
+            completed: 0,
+            urgent: 0
+          });
+        }
+        const regionRow = regionAggregate.get(region);
+        regionRow.total += 1;
+        if (appointment.status === 'completed') regionRow.completed += 1;
+        if (triage.level === 'critical' || triage.level === 'high') regionRow.urgent += 1;
 
         const reminder = buildReminderInfo(appointment.startAt);
         if (appointment.status === 'booked' && reminder.dueSoon) reminderDueCount += 1;
@@ -510,11 +736,64 @@ const appointmentsController = {
             durationSamples += 1;
           }
         }
+
+        const doctorKey = appointment.doctorId;
+        if (!doctorAggregate.has(doctorKey)) {
+          doctorAggregate.set(doctorKey, {
+            doctorId: doctorKey,
+            doctorName: appointment.doctor?.fullName || 'Unknown doctor',
+            total: 0,
+            completed: 0,
+            noShow: 0,
+            urgent: 0
+          });
+        }
+
+        const agg = doctorAggregate.get(doctorKey);
+        agg.total += 1;
+        if (appointment.status === 'completed') agg.completed += 1;
+        if (appointment.status === 'no_show') agg.noShow += 1;
+        if (triage.level === 'critical' || triage.level === 'high') agg.urgent += 1;
       }
 
       const total = appointments.length;
       const completionRate = total ? Math.round((statusCounts.completed / total) * 100) : 0;
       const avgConsultMins = durationSamples ? Math.round(totalDurationMins / durationSamples) : 0;
+
+      const topDoctors = [...doctorAggregate.values()]
+        .map((row) => ({
+          ...row,
+          completionRate: row.total ? Math.round((row.completed / row.total) * 100) : 0
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 6);
+
+      const adminInsights =
+        req.user.role === 'admin'
+          ? {
+              patientReach: uniquePatients.size,
+              noShowRate: total ? Math.round((statusCounts.no_show / total) * 100) : 0,
+              urgentRate: total ? Math.round((urgentCount / total) * 100) : 0,
+              modeCounts,
+              modeKpis: Object.entries(modeKpis).map(([mode, row]) => ({
+                mode,
+                total: row.total,
+                completionRate: row.total ? Math.round((row.completed / row.total) * 100) : 0,
+                noShowRate: row.total ? Math.round((row.noShow / row.total) * 100) : 0
+              })),
+              regionKpis: [...regionAggregate.values()]
+                .map((row) => ({
+                  ...row,
+                  completionRate: row.total ? Math.round((row.completed / row.total) * 100) : 0,
+                  urgentRate: row.total ? Math.round((row.urgent / row.total) * 100) : 0
+                }))
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 8),
+              topDoctors,
+              dailySeries: Object.entries(dailyTotals).map(([day, count]) => ({ day, count })),
+              operational
+            }
+          : null;
 
       return res.render('appointments-impact', {
         user: req.user,
@@ -525,7 +804,8 @@ const appointmentsController = {
           urgentCount,
           reminderDueCount,
           followUpCount,
-          avgConsultMins
+          avgConsultMins,
+          adminInsights
         }
       });
     } catch (e) {
@@ -561,6 +841,8 @@ const appointmentsController = {
         }
       });
 
+      await cancelScheduledRemindersForAppointment(appointmentId).catch(() => {});
+
       return res.redirect('/appointments');
     } catch (e) {
       return next(e);
@@ -588,6 +870,8 @@ const appointmentsController = {
           data: { status: 'ended', endedAt: new Date() }
         });
       });
+
+      await cancelScheduledRemindersForAppointment(appointmentId).catch(() => {});
 
       return res.redirect(`/appointments/${appointmentId}`);
     } catch (e) {

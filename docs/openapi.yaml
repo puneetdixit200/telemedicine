@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: Telemedicine Rural API
+  version: 1.0.0
+  description: |
+    Initial API contract baseline for versioned and unversioned routes.
+    Canonical contract target is /api/v1; /api remains backward-compatible.
+servers:
+  - url: /api/v1
+    description: Versioned API
+  - url: /api
+    description: Backward-compatible alias
+paths:
+  /session:
+    get:
+      summary: Get authenticated session context
+      responses:
+        '200':
+          description: Session payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  user:
+                    oneOf:
+                      - type: object
+                      - type: 'null'
+                  requestId:
+                    type: string
+  /health/live:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [live]
+                  overallStatus:
+                    type: string
+                    enum: [live]
+                  service:
+                    type: string
+                  uptimeSeconds:
+                    type: integer
+                  checks:
+                    type: object
+                  requestId:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+  /health/ready:
+    get:
+      summary: Readiness check including dependencies
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready]
+                  overallStatus:
+                    type: string
+                    enum: [ready]
+                  service:
+                    type: string
+                  policy:
+                    type: object
+                  checks:
+                    type: object
+                  requestId:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Dependency not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [not_ready]
+                  overallStatus:
+                    type: string
+                    enum: [not_ready]
+                  error:
+                    type: string
+                  code:
+                    type: string
+                  service:
+                    type: string
+                  alert:
+                    type: object
+                  policy:
+                    type: object
+                  checks:
+                    type: object
+                  requestId:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
