@@ -4,3 +4,22 @@ node_modules
 .env.development
 .env.test
 .env.production
+
+# Build output (generated during deploy)
+apps/frontend/dist
+
+# Local uploads (use Azure Blob in production)
+uploads/
+
+# Azure App Service logs
+iisnode/
+
+# QA reports (generated, not source)
+qa-testing/reports/
+qa-reports/reports/
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.swp

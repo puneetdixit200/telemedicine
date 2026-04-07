@@ -23,13 +23,7 @@ CREATE TYPE "ReminderChannel" AS ENUM ('sms', 'whatsapp');
 CREATE TYPE "ReminderStatus" AS ENUM ('scheduled', 'sent', 'failed', 'skipped');
 
 -- CreateEnum
-CREATE TYPE "DelegationScope" AS ENUM ('appointment', 'async_consult', 'records', 'all');
-
--- CreateEnum
-CREATE TYPE "AsyncConsultStatus" AS ENUM ('open', 'waiting_doctor', 'waiting_patient', 'closed');
-
--- CreateEnum
-CREATE TYPE "AsyncAuthorRole" AS ENUM ('patient', 'doctor', 'helper', 'system');
+CREATE TYPE "DelegationScope" AS ENUM ('appointment', 'records', 'all');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -234,38 +228,6 @@ CREATE TABLE "ConsentAudit" (
 );
 
 -- CreateTable
-CREATE TABLE "AsyncConsult" (
-    "id" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "patientId" TEXT NOT NULL,
-    "doctorId" TEXT NOT NULL,
-    "familyMemberId" TEXT,
-    "appointmentId" TEXT,
-    "status" "AsyncConsultStatus" NOT NULL DEFAULT 'open',
-    "subject" TEXT NOT NULL,
-    "symptoms" TEXT NOT NULL,
-    "preferredLanguage" TEXT,
-    "priority" TEXT,
-    "latestMessageAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "AsyncConsult_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "AsyncConsultReply" (
-    "id" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "consultId" TEXT NOT NULL,
-    "authorRole" "AsyncAuthorRole" NOT NULL,
-    "authorId" TEXT,
-    "authorName" TEXT,
-    "message" TEXT NOT NULL,
-
-    CONSTRAINT "AsyncConsultReply_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
@@ -330,18 +292,6 @@ CREATE INDEX "ConsentAudit_appointmentId_idx" ON "ConsentAudit"("appointmentId")
 
 -- CreateIndex
 CREATE INDEX "ConsentAudit_isActive_scope_idx" ON "ConsentAudit"("isActive", "scope");
-
--- CreateIndex
-CREATE INDEX "AsyncConsult_doctorId_status_latestMessageAt_idx" ON "AsyncConsult"("doctorId", "status", "latestMessageAt");
-
--- CreateIndex
-CREATE INDEX "AsyncConsult_patientId_status_latestMessageAt_idx" ON "AsyncConsult"("patientId", "status", "latestMessageAt");
-
--- CreateIndex
-CREATE INDEX "AsyncConsultReply_consultId_createdAt_idx" ON "AsyncConsultReply"("consultId", "createdAt");
-
--- CreateIndex
-CREATE INDEX "AsyncConsultReply_authorId_createdAt_idx" ON "AsyncConsultReply"("authorId", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "PatientProfile" ADD CONSTRAINT "PatientProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -414,22 +364,4 @@ ALTER TABLE "ConsentAudit" ADD CONSTRAINT "ConsentAudit_appointmentId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "ConsentAudit" ADD CONSTRAINT "ConsentAudit_grantedById_fkey" FOREIGN KEY ("grantedById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsult" ADD CONSTRAINT "AsyncConsult_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsult" ADD CONSTRAINT "AsyncConsult_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsult" ADD CONSTRAINT "AsyncConsult_familyMemberId_fkey" FOREIGN KEY ("familyMemberId") REFERENCES "FamilyMember"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsult" ADD CONSTRAINT "AsyncConsult_appointmentId_fkey" FOREIGN KEY ("appointmentId") REFERENCES "Appointment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsultReply" ADD CONSTRAINT "AsyncConsultReply_consultId_fkey" FOREIGN KEY ("consultId") REFERENCES "AsyncConsult"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AsyncConsultReply" ADD CONSTRAINT "AsyncConsultReply_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 

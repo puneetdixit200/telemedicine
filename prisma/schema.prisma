@@ -60,25 +60,71 @@ enum ReminderStatus {
   skipped
 }
 
+enum PharmacyOrderStatus {
+  placed
+  processing
+  ready
+  delivered
+  cancelled
+}
+
+enum LabOrderStatus {
+  requested
+  sample_collected
+  processing
+  report_ready
+  completed
+  cancelled
+}
+
 enum DelegationScope {
   appointment
-  async_consult
   records
   all
 }
 
-enum AsyncConsultStatus {
+enum ReferralStatus {
   open
-  waiting_doctor
-  waiting_patient
+  accepted
   closed
+  rejected
 }
 
-enum AsyncAuthorRole {
-  patient
-  doctor
-  helper
-  system
+enum ExternalConsultChannel {
+  sms
+  whatsapp
+}
+
+enum ExternalMessageDirection {
+  inbound
+  outbound
+}
+
+enum ChronicCarePlanStatus {
+  active
+  paused
+  completed
+  cancelled
+}
+
+enum CommunitySessionStatus {
+  scheduled
+  live
+  completed
+  cancelled
+}
+
+enum EmergencyStatus {
+  open
+  acknowledged
+  resolved
+}
+
+enum SecondOpinionStatus {
+  requested
+  accepted
+  completed
+  declined
 }
 
 model User {
@@ -114,15 +160,37 @@ model User {
   doctorReviewsReceived DoctorReview[] @relation("doctor_reviews_received")
   doctorReviewsWritten  DoctorReview[] @relation("doctor_reviews_written")
 
+  pharmacyOrdersAsPatient PharmacyOrder[] @relation("pharmacy_orders_patient")
+  pharmacyOrdersPlaced    PharmacyOrder[] @relation("pharmacy_orders_placed_by")
+  labOrdersAsPatient      LabOrder[]      @relation("lab_orders_patient")
+  labOrdersAsDoctor       LabOrder[]      @relation("lab_orders_doctor")
+
   reminderJobs          ReminderJob[]     @relation("patient_reminders")
   careSupportLinks      CareSupportLink[] @relation("care_support_patient")
   createdSupportLinks   CareSupportLink[] @relation("care_support_creator")
   consentAuditAsPatient ConsentAudit[]    @relation("consent_patient")
   consentAuditActions   ConsentAudit[]    @relation("consent_granted_by")
 
-  patientAsyncConsults  AsyncConsult[]    @relation("async_consults_patient")
-  doctorAsyncConsults   AsyncConsult[]    @relation("async_consults_doctor")
-  asyncRepliesAuthored  AsyncConsultReply[] @relation("async_reply_author")
+  vitalsAsPatient                ConsultationVital[]        @relation("vital_patient")
+  recordedVitals                  ConsultationVital[]        @relation("vital_recorded_by")
+  patientQrTokens                 PatientAccessToken[]       @relation("patient_qr_owner")
+  createdQrTokens                 PatientAccessToken[]       @relation("patient_qr_creator")
+  chronicPlans                    ChronicCarePlan[]          @relation("care_plan_patient")
+  createdPlans                    ChronicCarePlan[]          @relation("care_plan_creator")
+  emergencyForPatient             EmergencyEscalation[]      @relation("emergency_patient")
+  emergencyTriggered              EmergencyEscalation[]      @relation("emergency_triggered_by")
+  communitySessionsHosted         CommunitySession[]         @relation("community_host")
+  communitySessionParticipants    CommunitySessionParticipant[] @relation("community_participant_patient")
+  communityParticipantsJoined     CommunitySessionParticipant[] @relation("community_participant_joined_by")
+  externalConsultThreads          ExternalConsultThread[]    @relation("external_thread_patient")
+  externalConsultMessages         ExternalConsultMessage[]   @relation("external_message_actor")
+  voiceNotes                      ConsultationVoiceNote[]    @relation("voice_note_author")
+  secondOpinionAsPatient          SecondOpinionRequest[]     @relation("second_opinion_patient")
+  secondOpinionAsRequester        SecondOpinionRequest[]     @relation("second_opinion_requested_by")
+  secondOpinionAsDoctor           SecondOpinionRequest[]     @relation("second_opinion_doctor")
+  secondOpinionAudits             SecondOpinionAudit[]       @relation("second_opinion_actor")
+  referralsCreated                Referral[]                 @relation("referral_creator")
+  referralsAsPatient              Referral[]                 @relation("referral_patient")
 }
 
 model PatientProfile {
@@ -131,6 +199,9 @@ model PatientProfile {
 
   chronicConditions String?
   basicHealthInfo   String?
+  abhaId            String? @unique
+  abhaAddress       String?
+  abhaLinkedAt      DateTime?
 }
 
 model DoctorProfile {
@@ -144,6 +215,7 @@ model DoctorProfile {
   consultationLanguages String?
   description          String?
   callEnabled          Boolean @default(false)
+  statusMessage        String?
 }
 
 model Slot {
@@ -175,6 +247,14 @@ model Appointment {
   doctor      User              @relation("appointments_as_doctor", fields: [doctorId], references: [id], onDelete: Cascade)
   familyMember FamilyMember?    @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
+  caseRootAppointmentId String?
+  caseRootAppointment Appointment? @relation("appointment_case_root", fields: [caseRootAppointmentId], references: [id], onDelete: SetNull)
+  caseChildren Appointment[] @relation("appointment_case_root")
+
+  referredFromAppointmentId String?
+  referredFromAppointment Appointment? @relation("appointment_referred_from", fields: [referredFromAppointmentId], references: [id], onDelete: SetNull)
+  referralChildren Appointment[] @relation("appointment_referred_from")
+
   startAt     DateTime
   status      AppointmentStatus @default(booked)
   mode        ConsultationMode  @default(video)
@@ -193,12 +273,24 @@ model Appointment {
   review      DoctorReview?
   reminderJobs ReminderJob[]
   consentAudits ConsentAudit[]
-  asyncConsults AsyncConsult[]
+  pharmacyOrders PharmacyOrder[]
+  labOrders      LabOrder[]
+  vitals         ConsultationVital[]
+  referralsFrom  Referral[] @relation("referral_from_appointment")
+  referralsTo    Referral[] @relation("referral_to_appointment")
+  externalThread ExternalConsultThread?
+  voiceNotes     ConsultationVoiceNote[]
+  emergencyEscalations EmergencyEscalation[]
+  carePlanCheckIns CarePlanCheckIn[]
+  secondOpinionRequests SecondOpinionRequest[]
+  communityFollowUps CommunitySessionParticipant[] @relation("community_followup_appointment")
 
   @@index([doctorId, startAt])
   @@index([patientId, startAt])
   @@index([familyMemberId])
   @@index([triageLevel])
+  @@index([caseRootAppointmentId])
+  @@index([referredFromAppointmentId])
 }
 
 model FamilyMember {
@@ -218,7 +310,10 @@ model FamilyMember {
 
   appointments      Appointment[]
   documents         Document[]
-  asyncConsults     AsyncConsult[]
+  labOrders         LabOrder[]
+  chronicPlans      ChronicCarePlan[]
+  referrals         Referral[]
+  communitySessions CommunitySessionParticipant[]
 
   @@index([ownerPatientId, fullName])
 }
@@ -255,6 +350,8 @@ model Document {
 
   blobName      String
 
+  labOrderReports LabOrder[] @relation("lab_order_report_document")
+
   @@index([ownerId, appointmentId, familyMemberId])
 }
 
@@ -275,7 +372,111 @@ model Prescription {
   pharmacyContact String?
   handoffCode   String?
 
+  pharmacyOrders PharmacyOrder[]
+
   @@index([handoffCode])
+}
+
+model PharmacyOrder {
+  id              String              @id @default(uuid())
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  patientId       String
+  patient         User                @relation("pharmacy_orders_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  appointmentId   String?
+  appointment     Appointment?        @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  prescriptionId  String?
+  prescription    Prescription?       @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+
+  placedById      String
+  placedBy        User                @relation("pharmacy_orders_placed_by", fields: [placedById], references: [id], onDelete: Cascade)
+
+  pharmacyName    String?
+  pharmacyContact String?
+  handoffCode     String?
+  deliveryAddress String?
+  notes           String?
+  status          PharmacyOrderStatus @default(placed)
+  items           Json
+
+  @@index([patientId, createdAt])
+  @@index([appointmentId])
+  @@index([prescriptionId])
+  @@index([status, createdAt])
+}
+
+model LabTestCatalog {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  code            String   @unique
+  name            String
+  category        String?
+  sampleType      String?
+  fastingRequired Boolean  @default(false)
+  turnaroundHours Int?
+  priceCents      Int?
+  isActive        Boolean  @default(true)
+
+  orderItems      LabOrderItem[]
+
+  @@index([isActive, category])
+}
+
+model LabOrder {
+  id               String       @id @default(uuid())
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  patientId        String
+  patient          User         @relation("lab_orders_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  appointmentId    String?
+  appointment      Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  orderedByDoctorId String?
+  orderedByDoctor   User?       @relation("lab_orders_doctor", fields: [orderedByDoctorId], references: [id], onDelete: SetNull)
+
+  familyMemberId   String?
+  familyMember     FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  reportDocumentId String?      @unique
+  reportDocument   Document?    @relation("lab_order_report_document", fields: [reportDocumentId], references: [id], onDelete: SetNull)
+
+  status           LabOrderStatus @default(requested)
+  clinicalNotes    String?
+
+  items            LabOrderItem[]
+
+  @@index([patientId, createdAt])
+  @@index([appointmentId])
+  @@index([orderedByDoctorId])
+  @@index([familyMemberId])
+  @@index([status, createdAt])
+}
+
+model LabOrderItem {
+  id             String         @id @default(uuid())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  labOrderId     String
+  labOrder       LabOrder       @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+
+  catalogTestId  String?
+  catalogTest    LabTestCatalog? @relation(fields: [catalogTestId], references: [id], onDelete: SetNull)
+
+  testName       String
+  sampleType     String?
+  instructions   String?
+  priceCents     Int?
+
+  @@index([labOrderId])
+  @@index([catalogTestId])
 }
 
 model DoctorReview {
@@ -377,49 +578,319 @@ model ConsentAudit {
   @@index([isActive, scope])
 }
 
-model AsyncConsult {
-  id              String            @id @default(uuid())
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+model ConsultationVital {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  patientId       String
-  patient         User              @relation("async_consults_patient", fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId  String
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
-  doctorId        String
-  doctor          User              @relation("async_consults_doctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        User     @relation("vital_patient", fields: [patientId], references: [id], onDelete: Cascade)
 
-  familyMemberId  String?
-  familyMember    FamilyMember?     @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  recordedById   String
+  recordedBy     User     @relation("vital_recorded_by", fields: [recordedById], references: [id], onDelete: Cascade)
 
-  appointmentId   String?
-  appointment     Appointment?      @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  source         String?
+  bpSystolic     Int?
+  bpDiastolic    Int?
+  temperatureC   Float?
+  glucoseMgDl    Float?
+  spo2Percent    Int?
+  pulseBpm       Int?
+  weightKg       Float?
+  notes          String?
 
-  status          AsyncConsultStatus @default(open)
-  subject         String
-  symptoms        String
-  preferredLanguage String?
-  priority        String?
-  latestMessageAt DateTime          @default(now())
-
-  replies         AsyncConsultReply[]
-
-  @@index([doctorId, status, latestMessageAt])
-  @@index([patientId, status, latestMessageAt])
+  @@index([appointmentId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([recordedById, createdAt])
 }
 
-model AsyncConsultReply {
-  id            String         @id @default(uuid())
-  createdAt     DateTime       @default(now())
+model Referral {
+  id                   String         @id @default(uuid())
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
-  consultId     String
-  consult       AsyncConsult   @relation(fields: [consultId], references: [id], onDelete: Cascade)
+  fromAppointmentId    String
+  fromAppointment      Appointment    @relation("referral_from_appointment", fields: [fromAppointmentId], references: [id], onDelete: Cascade)
 
-  authorRole    AsyncAuthorRole
-  authorId      String?
-  author        User?          @relation("async_reply_author", fields: [authorId], references: [id], onDelete: SetNull)
-  authorName    String?
-  message       String
+  toAppointmentId      String?
+  toAppointment        Appointment?   @relation("referral_to_appointment", fields: [toAppointmentId], references: [id], onDelete: SetNull)
 
-  @@index([consultId, createdAt])
-  @@index([authorId, createdAt])
+  patientId            String
+  patient              User           @relation("referral_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  familyMemberId       String?
+  familyMember         FamilyMember?  @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  createdById          String
+  createdBy            User           @relation("referral_creator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  fromDoctorId         String?
+  toDoctorId           String?
+  targetSpecialization String?
+  reason               String
+  status               ReferralStatus @default(open)
+  continuitySnapshot   Json?
+
+  @@index([patientId, createdAt])
+  @@index([fromAppointmentId, createdAt])
+  @@index([toAppointmentId])
+  @@index([status, createdAt])
+}
+
+model PatientAccessToken {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  token        String   @unique
+  patientId    String
+  patient      User     @relation("patient_qr_owner", fields: [patientId], references: [id], onDelete: Cascade)
+
+  createdById  String
+  createdBy    User     @relation("patient_qr_creator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  label        String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  lastAccessedAt DateTime?
+
+  @@index([patientId, expiresAt])
+  @@index([expiresAt])
+}
+
+model ChronicCarePlan {
+  id                String                @id @default(uuid())
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  patientId         String
+  patient           User                  @relation("care_plan_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  createdById       String
+  createdBy         User                  @relation("care_plan_creator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  familyMemberId    String?
+  familyMember      FamilyMember?         @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  condition         String
+  status            ChronicCarePlanStatus @default(active)
+  startAt           DateTime              @default(now())
+  nextCheckInAt     DateTime?
+  checkInIntervalDays Int                 @default(30)
+  milestones        Json?
+  notes             String?
+
+  checkIns          CarePlanCheckIn[]
+
+  @@index([patientId, status, nextCheckInAt])
+  @@index([familyMemberId])
+}
+
+model CarePlanCheckIn {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  planId          String
+  plan            ChronicCarePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  scheduledAt     DateTime
+  completedAt     DateTime?
+  status          String    @default("scheduled")
+  notes           String?
+  vitalsSnapshot  Json?
+
+  @@index([planId, scheduledAt])
+  @@index([appointmentId])
+}
+
+model EmergencyEscalation {
+  id             String          @id @default(uuid())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  patientId      String
+  patient        User            @relation("emergency_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  triggeredById  String
+  triggeredBy    User            @relation("emergency_triggered_by", fields: [triggeredById], references: [id], onDelete: Cascade)
+
+  appointmentId  String?
+  appointment    Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  locationLat    Float?
+  locationLng    Float?
+  locationText   String?
+  contactName    String?
+  contactPhone   String?
+  medicalSummary String?
+  latestVitals   Json?
+  status         EmergencyStatus @default(open)
+
+  @@index([patientId, status, createdAt])
+  @@index([appointmentId])
+}
+
+model CommunitySession {
+  id            String                 @id @default(uuid())
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  doctorId      String
+  doctor        User                   @relation("community_host", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  title         String
+  village       String?
+  startsAt      DateTime
+  endsAt        DateTime?
+  status        CommunitySessionStatus @default(scheduled)
+  notes         String?
+
+  participants  CommunitySessionParticipant[]
+
+  @@index([doctorId, startsAt])
+  @@index([status, startsAt])
+}
+
+model CommunitySessionParticipant {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  sessionId            String
+  session              CommunitySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  patientId            String
+  patient              User     @relation("community_participant_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  familyMemberId       String?
+  familyMember         FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  joinedByUserId       String?
+  joinedByUser         User?    @relation("community_participant_joined_by", fields: [joinedByUserId], references: [id], onDelete: SetNull)
+
+  followUpAppointmentId String?
+  followUpAppointment  Appointment? @relation("community_followup_appointment", fields: [followUpAppointmentId], references: [id], onDelete: SetNull)
+
+  notes                String?
+
+  @@index([sessionId, createdAt])
+  @@index([patientId])
+  @@index([familyMemberId])
+}
+
+model ExternalConsultThread {
+  id            String                @id @default(uuid())
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  appointmentId String                @unique
+  appointment   Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  patientId     String
+  patient       User                  @relation("external_thread_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  channel       ExternalConsultChannel @default(whatsapp)
+  contactPhone  String?
+  lastMessageAt DateTime?
+
+  messages      ExternalConsultMessage[]
+
+  @@index([patientId, lastMessageAt])
+}
+
+model ExternalConsultMessage {
+  id             String                   @id @default(uuid())
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  threadId       String
+  thread         ExternalConsultThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  direction      ExternalMessageDirection
+  body           String
+
+  syncedById     String?
+  syncedBy       User?                    @relation("external_message_actor", fields: [syncedById], references: [id], onDelete: SetNull)
+
+  deliveryStatus String?
+  metadata       Json?
+
+  @@index([threadId, createdAt])
+  @@index([syncedById])
+}
+
+model ConsultationVoiceNote {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointmentId  String
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  doctorId       String
+  doctor         User     @relation("voice_note_author", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  language       String   @default("en")
+  transcriptText String
+  summaryText    String?
+  audioBlobName  String?
+  source         String?
+
+  @@index([appointmentId, createdAt])
+  @@index([doctorId, createdAt])
+}
+
+model SecondOpinionRequest {
+  id               String              @id @default(uuid())
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  patientId        String
+  patient          User                @relation("second_opinion_patient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  requestedById    String
+  requestedBy      User                @relation("second_opinion_requested_by", fields: [requestedById], references: [id], onDelete: Cascade)
+
+  appointmentId    String
+  appointment      Appointment         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  secondDoctorId   String?
+  secondDoctor     User?               @relation("second_opinion_doctor", fields: [secondDoctorId], references: [id], onDelete: SetNull)
+
+  status           SecondOpinionStatus @default(requested)
+  consentNote      String?
+  consentGrantedAt DateTime            @default(now())
+  reviewSummary    String?
+  reviewedAt       DateTime?
+
+  audits           SecondOpinionAudit[]
+
+  @@index([patientId, status, createdAt])
+  @@index([appointmentId])
+  @@index([secondDoctorId])
+}
+
+model SecondOpinionAudit {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  requestId  String
+  request    SecondOpinionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  actorId    String
+  actor      User     @relation("second_opinion_actor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  action     String
+  notes      String?
+
+  @@index([requestId, createdAt])
+  @@index([actorId, createdAt])
 }

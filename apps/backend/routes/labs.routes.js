@@ -1,0 +1,16 @@
+const express = require('express');
+const { authRequired } = require('../middleware/auth');
+const { labsController } = require('../controllers/labs.controller');
+
+const router = express.Router();
+
+router.get('/catalog', authRequired, labsController.listCatalog);
+router.post('/catalog', authRequired, labsController.createCatalogTest);
+
+router.get('/orders', authRequired, labsController.listOrders);
+router.post('/orders', authRequired, labsController.createOrder);
+router.get('/orders/:orderId', authRequired, labsController.viewOrder);
+router.post('/orders/:orderId/status', authRequired, labsController.updateOrderStatus);
+router.post('/orders/:orderId/report', authRequired, labsController.attachReport);
+
+module.exports = router;

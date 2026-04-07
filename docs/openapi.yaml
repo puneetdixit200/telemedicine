@@ -30,6 +30,344 @@ paths:
                       - type: 'null'
                   requestId:
                     type: string
+  /documents/{documentId}/preview:
+    get:
+      summary: Preview a PDF document inline
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF stream or redirect to secure PDF preview URL
+        '403':
+          description: Forbidden for unauthorized users
+        '404':
+          description: Document not found
+  /pharmacy/orders:
+    get:
+      summary: List pharmacy orders visible to the authenticated user
+      responses:
+        '200':
+          description: Pharmacy order timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PharmacyOrdersResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      summary: Create a pharmacy order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePharmacyOrderRequest'
+      responses:
+        '201':
+          description: Pharmacy order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PharmacyOrderResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /pharmacy/orders/{orderId}:
+    get:
+      summary: View a pharmacy order
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pharmacy order detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PharmacyOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /pharmacy/orders/{orderId}/status:
+    post:
+      summary: Update pharmacy order status
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [placed, processing, ready, delivered, cancelled]
+      responses:
+        '200':
+          description: Updated pharmacy order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PharmacyOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /labs/catalog:
+    get:
+      summary: List active lab tests in catalog
+      responses:
+        '200':
+          description: Catalog entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  view:
+                    type: string
+                  tests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LabCatalogTest'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      summary: Create or update a lab catalog test (doctor/admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabCatalogTestRequest'
+      responses:
+        '201':
+          description: Catalog test saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  test:
+                    $ref: '#/components/schemas/LabCatalogTest'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /labs/orders:
+    get:
+      summary: List lab orders visible to the authenticated user
+      responses:
+        '200':
+          description: Lab order timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrdersResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      summary: Create a lab order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabOrderRequest'
+      responses:
+        '201':
+          description: Lab order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrderResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /labs/orders/{orderId}:
+    get:
+      summary: View a lab order
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lab order detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /labs/orders/{orderId}/status:
+    post:
+      summary: Update lab order status
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [requested, sample_collected, processing, report_ready, completed, cancelled]
+      responses:
+        '200':
+          description: Updated lab order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /labs/orders/{orderId}/report:
+    post:
+      summary: Attach a PDF report document to a lab order
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documentId]
+              properties:
+                documentId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Lab order with linked report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /health/live:
     get:
       summary: Liveness check
@@ -128,3 +466,282 @@ components:
       type: apiKey
       in: cookie
       name: token
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    PharmacyOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [placed, processing, ready, delivered, cancelled]
+        patientId:
+          type: string
+          format: uuid
+        appointmentId:
+          type: string
+          format: uuid
+          nullable: true
+        prescriptionId:
+          type: string
+          format: uuid
+          nullable: true
+        handoffCode:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              dosage:
+                type: string
+              frequency:
+                type: string
+              duration:
+                type: string
+              quantity:
+                type: integer
+    PharmacyOrderResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        view:
+          type: string
+        order:
+          $ref: '#/components/schemas/PharmacyOrder'
+        message:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+    PharmacyOrdersResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        view:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/PharmacyOrder'
+        summary:
+          type: object
+          additionalProperties:
+            type: integer
+    CreatePharmacyOrderRequest:
+      type: object
+      properties:
+        appointmentId:
+          type: string
+          format: uuid
+          nullable: true
+        prescriptionId:
+          type: string
+          format: uuid
+          nullable: true
+        patientId:
+          type: string
+          format: uuid
+          nullable: true
+        pharmacyName:
+          type: string
+        pharmacyContact:
+          type: string
+        deliveryAddress:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              dosage:
+                type: string
+              frequency:
+                type: string
+              duration:
+                type: string
+              quantity:
+                type: integer
+    LabCatalogTest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        sampleType:
+          type: string
+          nullable: true
+        fastingRequired:
+          type: boolean
+        turnaroundHours:
+          type: integer
+          nullable: true
+        priceCents:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+    CreateLabCatalogTestRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        sampleType:
+          type: string
+        fastingRequired:
+          type: boolean
+        turnaroundHours:
+          type: integer
+        priceCents:
+          type: integer
+        isActive:
+          type: boolean
+    LabOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        patientId:
+          type: string
+          format: uuid
+        appointmentId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [requested, sample_collected, processing, report_ready, completed, cancelled]
+        clinicalNotes:
+          type: string
+          nullable: true
+        reportDocument:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            fileName:
+              type: string
+            contentType:
+              type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              testName:
+                type: string
+              sampleType:
+                type: string
+                nullable: true
+              instructions:
+                type: string
+                nullable: true
+    LabOrderResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        view:
+          type: string
+        order:
+          $ref: '#/components/schemas/LabOrder'
+        message:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+    LabOrdersResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        view:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabOrder'
+        summary:
+          type: object
+          additionalProperties:
+            type: integer
+    CreateLabOrderRequest:
+      type: object
+      properties:
+        appointmentId:
+          type: string
+          format: uuid
+          nullable: true
+        patientId:
+          type: string
+          format: uuid
+          nullable: true
+        familyMemberId:
+          type: string
+          format: uuid
+          nullable: true
+        clinicalNotes:
+          type: string
+        testCatalogIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        customTests:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              sampleType:
+                type: string
+              instructions:
+                type: string

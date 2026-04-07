@@ -125,6 +125,62 @@ async function main() {
       });
     }
   }
+
+  await prisma.labTestCatalog.createMany({
+    data: [
+      {
+        code: 'CBC',
+        name: 'Complete Blood Count',
+        category: 'Hematology',
+        sampleType: 'Blood',
+        fastingRequired: false,
+        turnaroundHours: 24,
+        priceCents: 60000,
+        isActive: true
+      },
+      {
+        code: 'LFT',
+        name: 'Liver Function Test',
+        category: 'Biochemistry',
+        sampleType: 'Blood',
+        fastingRequired: true,
+        turnaroundHours: 36,
+        priceCents: 90000,
+        isActive: true
+      },
+      {
+        code: 'KFT',
+        name: 'Kidney Function Test',
+        category: 'Biochemistry',
+        sampleType: 'Blood',
+        fastingRequired: true,
+        turnaroundHours: 36,
+        priceCents: 90000,
+        isActive: true
+      },
+      {
+        code: 'HBA1C',
+        name: 'HbA1c',
+        category: 'Diabetes',
+        sampleType: 'Blood',
+        fastingRequired: false,
+        turnaroundHours: 48,
+        priceCents: 75000,
+        isActive: true
+      },
+      {
+        code: 'TSH',
+        name: 'Thyroid Stimulating Hormone',
+        category: 'Hormones',
+        sampleType: 'Blood',
+        fastingRequired: false,
+        turnaroundHours: 48,
+        priceCents: 70000,
+        isActive: true
+      }
+    ],
+    skipDuplicates: true
+  });
 }
 
 main()

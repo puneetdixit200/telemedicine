@@ -12,7 +12,7 @@ Design principle:
 
 Implementation status:
 
-- Implemented in the React app at `frontend/src/App.jsx` and `frontend/src/styles.css`.
+- Implemented in the React app at `apps/frontend/src/App.jsx` and `apps/frontend/src/styles.css`.
 - Experience includes a guided landing, guided dashboard, booking wizard, simplified consultation room, and medicine cabinet.
 
 ## 2. Visual Identity and Theme
@@ -340,9 +340,9 @@ Admin journey:
 
 Core files:
 
-- `frontend/src/App.jsx`
-- `frontend/src/styles.css`
-- `frontend/src/lib/api.js`
+- `apps/frontend/src/App.jsx`
+- `apps/frontend/src/styles.css`
+- `apps/frontend/src/lib/api.js`
 
 Server integration notes:
 

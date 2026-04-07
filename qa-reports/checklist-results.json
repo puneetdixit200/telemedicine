@@ -1,0 +1,450 @@
+{
+  "generatedAt": "2026-04-04T20:50:26.878Z",
+  "summary": {
+    "total": 55,
+    "passed": 55,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "id": "A-1",
+      "area": "Authentication",
+      "title": "Login/register/logout routes are defined",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/auth.routes.js:8 POST /login route | apps/backend/routes/auth.routes.js:11 POST /register route | apps/backend/routes/auth.routes.js:12 POST /logout route"
+    },
+    {
+      "id": "A-2",
+      "area": "Authentication",
+      "title": "Role model includes patient/doctor/admin/help_worker",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "prisma/schema.prisma:10 Role enum | prisma/schema.prisma:11 patient role | prisma/schema.prisma:12 doctor role | prisma/schema.prisma:13 admin role | prisma/schema.prisma:14 help_worker role"
+    },
+    {
+      "id": "A-3",
+      "area": "Authentication",
+      "title": "Unauthorized API request is blocked",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/appointments => 401 code=UNAUTHORIZED"
+    },
+    {
+      "id": "A-4",
+      "area": "Authentication",
+      "title": "/api and /api/v1 compatibility exists for session",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/session=200, /api/v1/session=200"
+    },
+    {
+      "id": "B-1",
+      "area": "Dashboard",
+      "title": "Protected shell routes include dashboard/book/appointments/ai-copilot",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:341 dashboard route | apps/frontend/src/App.jsx:342 book route | apps/frontend/src/App.jsx:350 appointments route | apps/frontend/src/App.jsx:357 ai-copilot route"
+    },
+    {
+      "id": "B-2",
+      "area": "Dashboard",
+      "title": "Connectivity banner and data saver toggle are present",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:545 connectivity banner class | apps/frontend/src/App.jsx:576 data saver label | apps/frontend/src/App.jsx:196 data saver toggle handler"
+    },
+    {
+      "id": "B-3",
+      "area": "Dashboard",
+      "title": "Profile language picker is available",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:936 language picker id | apps/frontend/src/App.jsx:933 language trigger class"
+    },
+    {
+      "id": "C-1",
+      "area": "Booking",
+      "title": "Doctor directory supports specialization/language/online filters",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/doctors.controller.js:97 specialization filter logic | apps/backend/controllers/doctors.controller.js:97 language filter logic | apps/backend/controllers/doctors.controller.js:3 online filter logic"
+    },
+    {
+      "id": "C-2",
+      "area": "Booking",
+      "title": "Booking wizard exposes 4 guided steps",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:2602 wizard step 1 | apps/frontend/src/App.jsx:2609 wizard step 2 | apps/frontend/src/App.jsx:2616 wizard step 3 | apps/frontend/src/App.jsx:2621 wizard step 4"
+    },
+    {
+      "id": "C-3",
+      "area": "Booking",
+      "title": "Booking API requires patient role",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/appointments.routes.js:12 patient role gate on book"
+    },
+    {
+      "id": "C-4",
+      "area": "Booking",
+      "title": "Slot race guard prevents booking unavailable slot",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/appointments.controller.js:462 transactional slot update | apps/backend/controllers/appointments.controller.js:463 availability condition in updateMany | apps/backend/controllers/appointments.controller.js:466 stale slot conflict guard"
+    },
+    {
+      "id": "C-5",
+      "area": "Booking",
+      "title": "Family-member booking validates ownership",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/appointments.controller.js:148 family member payload usage | apps/backend/controllers/appointments.controller.js:454 owner check"
+    },
+    {
+      "id": "D-1",
+      "area": "Appointments",
+      "title": "Lifecycle routes include prep/review/cancel/end",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/appointments.routes.js:13 prep route | apps/backend/routes/appointments.routes.js:14 review route | apps/backend/routes/appointments.routes.js:15 cancel route | apps/backend/routes/appointments.routes.js:16 end route"
+    },
+    {
+      "id": "D-2",
+      "area": "Appointments",
+      "title": "Pre-consult updates blocked for closed appointments",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/appointments.controller.js:529 status gate in pre-consult update"
+    },
+    {
+      "id": "D-3",
+      "area": "Appointments",
+      "title": "Review submission only allowed after completion",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/appointments.controller.js:609 completed-only review check"
+    },
+    {
+      "id": "D-4",
+      "area": "Appointments",
+      "title": "Presence endpoint exists for call readiness",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/appointments.routes.js:10 presence route"
+    },
+    {
+      "id": "E-1",
+      "area": "Calls",
+      "title": "Call join/end routes are auth protected",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/calls.routes.js:7 auth on call join | apps/backend/routes/calls.routes.js:8 auth on call end"
+    },
+    {
+      "id": "E-2",
+      "area": "Calls",
+      "title": "Call access check binds user to appointment",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/calls.controller.js:16 appointment ACL check"
+    },
+    {
+      "id": "E-3",
+      "area": "Calls",
+      "title": "Closed appointments cannot start calls",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/calls.controller.js:62 booked status requirement"
+    },
+    {
+      "id": "F-1",
+      "area": "Prescription",
+      "title": "Prescription routes include view/upsert/pdf",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/prescriptions.routes.js:7 view route | apps/backend/routes/prescriptions.routes.js:8 doctor-only upsert route | apps/backend/routes/prescriptions.routes.js:9 pdf route"
+    },
+    {
+      "id": "F-2",
+      "area": "Prescription",
+      "title": "Saving prescription auto-completes appointment",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/prescriptions.controller.js:222 appointment completion write"
+    },
+    {
+      "id": "F-3",
+      "area": "Prescription",
+      "title": "Handoff code generation exists",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/prescriptions.controller.js:79 handoff code helper | apps/backend/controllers/prescriptions.controller.js:86 handoff code persistence"
+    },
+    {
+      "id": "G-1",
+      "area": "Documents",
+      "title": "Upload size capped at 10MB",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/documents.routes.js:7 multer 10MB limit"
+    },
+    {
+      "id": "G-2",
+      "area": "Documents",
+      "title": "Document access ACL checks owner and appointment scope",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/documents.controller.js:23 owner ACL shortcut | apps/backend/controllers/documents.controller.js:27 appointment ACL | apps/backend/controllers/documents.controller.js:52 upload role gate"
+    },
+    {
+      "id": "G-3",
+      "area": "Documents",
+      "title": "Local download fallback route is available",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/documents.routes.js:12 local blob route"
+    },
+    {
+      "id": "K-1",
+      "area": "Pharmacy and Labs",
+      "title": "Prisma schema includes pharmacy and lab order models",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "prisma/schema.prisma:380 PharmacyOrder model | prisma/schema.prisma:430 LabOrder model | prisma/schema.prisma:411 LabTestCatalog model"
+    },
+    {
+      "id": "K-2",
+      "area": "Pharmacy and Labs",
+      "title": "API route registry mounts pharmacy and labs route groups",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/index.js:36 pharmacy routes mounted | apps/backend/routes/index.js:37 labs routes mounted"
+    },
+    {
+      "id": "K-3",
+      "area": "Pharmacy and Labs",
+      "title": "Pharmacy routes include list/create/detail/status update",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/pharmacy.routes.js:7 list route | apps/backend/routes/pharmacy.routes.js:8 create route | apps/backend/routes/pharmacy.routes.js:9 detail route | apps/backend/routes/pharmacy.routes.js:10 status route"
+    },
+    {
+      "id": "K-4",
+      "area": "Pharmacy and Labs",
+      "title": "Lab routes include catalog/orders/status/report endpoints",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/labs.routes.js:7 catalog list route | apps/backend/routes/labs.routes.js:8 catalog create route | apps/backend/routes/labs.routes.js:10 orders list route | apps/backend/routes/labs.routes.js:13 status route | apps/backend/routes/labs.routes.js:14 report route"
+    },
+    {
+      "id": "K-5",
+      "area": "Pharmacy and Labs",
+      "title": "Document PDF preview route is available",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/documents.routes.js:14 preview route | apps/backend/controllers/documents.controller.js:162 preview handler"
+    },
+    {
+      "id": "K-6",
+      "area": "Pharmacy and Labs",
+      "title": "Frontend includes pharmacy, lab, and PDF preview pages",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:353 pharmacy page route | apps/frontend/src/App.jsx:354 labs page route | apps/frontend/src/App.jsx:355 pdf preview route"
+    },
+    {
+      "id": "K-7",
+      "area": "Pharmacy and Labs",
+      "title": "Prescription and document links use preview-first behavior",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:119 preview helper | apps/frontend/src/App.jsx:4858 document preview link | apps/backend/controllers/prescriptions.controller.js:254 download toggle support"
+    },
+    {
+      "id": "K-8",
+      "area": "Pharmacy and Labs",
+      "title": "Pharmacy and lab order APIs are auth-protected",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/pharmacy/orders=401, /api/labs/orders=401"
+    },
+    {
+      "id": "H-1",
+      "area": "Workspace",
+      "title": "Patient workspace and family APIs exist",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/patients.routes.js:9 workspace route | apps/backend/routes/patients.routes.js:10 family create route | apps/backend/routes/patients.routes.js:11 family update route"
+    },
+    {
+      "id": "H-2",
+      "area": "Workspace",
+      "title": "Family member updates enforce owner constraint",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/patients.controller.js:131 owner check in family update"
+    },
+    {
+      "id": "I-1",
+      "area": "Reminders",
+      "title": "Reminder scheduler creates 24h and 30m jobs",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/services/reminder.service.js:88 24h reminder offset | apps/backend/services/reminder.service.js:89 30m reminder offset | apps/backend/services/reminder.service.js:104 scheduled status writes"
+    },
+    {
+      "id": "I-2",
+      "area": "Reminders",
+      "title": "Reminder dispatch route is doctor/admin only",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/reminders.routes.js:8 dispatch role gate"
+    },
+    {
+      "id": "J-1",
+      "area": "Support and Consent",
+      "title": "Helper link, consent grant, and toggle routes exist",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/support.routes.js:8 helper create route | apps/backend/routes/support.routes.js:9 helper toggle route | apps/backend/routes/support.routes.js:7 consent route"
+    },
+    {
+      "id": "J-2",
+      "area": "Support and Consent",
+      "title": "Revocation trail updates active consents and revokedAt",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/support.controller.js:286 bulk revoke existing consents | apps/backend/controllers/support.controller.js:297 audit action for toggle"
+    },
+    {
+      "id": "L-1",
+      "area": "AI",
+      "title": "AI routes are auth-protected and rate-limited",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/ai.routes.js:19 auth middleware on AI routes | apps/backend/routes/ai.routes.js:20 rate limiter middleware"
+    },
+    {
+      "id": "L-2",
+      "area": "AI",
+      "title": "AI context endpoint blocks unauthenticated access",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/ai/context => 401 code=UNAUTHORIZED"
+    },
+    {
+      "id": "L-3",
+      "area": "AI",
+      "title": "AI responses expose fallbackUsed metadata",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/ai.controller.js:450 fallbackUsed metadata set"
+    },
+    {
+      "id": "L-4",
+      "area": "AI",
+      "title": "All AI endpoints mark outputs as requiresReview=true",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/controllers/ai.controller.js: no match for forbidden requiresReview false"
+    },
+    {
+      "id": "L-5",
+      "area": "AI",
+      "title": "UI labels outputs as Draft - requires human review",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:6090 explicit draft label"
+    },
+    {
+      "id": "L-6",
+      "area": "AI",
+      "title": "Offline AI draft queue persists and retries",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/App.jsx:20 offline storage key | apps/frontend/src/App.jsx:6010 queue helper | apps/frontend/src/App.jsx:6034 retry helper"
+    },
+    {
+      "id": "M-1",
+      "area": "Localization",
+      "title": "Language widget limits options to approved language codes",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/TranslationService.jsx:3 language whitelist | apps/frontend/src/TranslationService.jsx:60 dropdown sanitizer | apps/frontend/src/TranslationService.jsx:87 unknown option removal"
+    },
+    {
+      "id": "M-2",
+      "area": "Localization",
+      "title": "Material icon tokens are protected from translation",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/frontend/src/TranslationService.jsx:43 notranslate class application | apps/frontend/src/TranslationService.jsx:47 icon token preservation"
+    },
+    {
+      "id": "NFR-1",
+      "area": "Security and Reliability",
+      "title": "Helmet CSP is enabled",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/server/create-app.js:57 helmet CSP configuration"
+    },
+    {
+      "id": "NFR-2",
+      "area": "Security and Reliability",
+      "title": "Request IDs are emitted in API responses and headers",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/session requestId=b835c5c9-1079-484d-9ec2-23d56f6ee1dc header=b835c5c9-1079-484d-9ec2-23d56f6ee1dc"
+    },
+    {
+      "id": "NFR-3",
+      "area": "Security and Reliability",
+      "title": "Health probes are available",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/health/live=200, /api/health/ready=200"
+    },
+    {
+      "id": "NFR-4",
+      "area": "Security and Reliability",
+      "title": "SPA index no-store and assets immutable caching rules exist",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/server/create-app.js:111 index no-store header | apps/backend/server/create-app.js:116 immutable asset cache directive"
+    },
+    {
+      "id": "NFR-5",
+      "area": "Security and Reliability",
+      "title": "API mode rewrites redirects/renders for JSON clients",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/middleware/api-mode.js:20 redirect rewrite hook | apps/backend/middleware/api-mode.js:13 render rewrite hook"
+    },
+    {
+      "id": "EDGE-1",
+      "area": "Edge Cases",
+      "title": "Unknown API route returns structured NOT_FOUND payload",
+      "method": "runtime",
+      "status": "PASS",
+      "evidence": "/api/no-such-route => 404 code=NOT_FOUND"
+    },
+    {
+      "id": "EDGE-2",
+      "area": "Edge Cases",
+      "title": "Global rate limit middleware is configured",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/server/create-app.js:87 global request limiter"
+    },
+    {
+      "id": "EDGE-3",
+      "area": "Edge Cases",
+      "title": "AI limiter returns explicit AI_RATE_LIMITED code",
+      "method": "static",
+      "status": "PASS",
+      "evidence": "apps/backend/routes/ai.routes.js:15 AI limiter error code"
+    }
+  ]
+}
