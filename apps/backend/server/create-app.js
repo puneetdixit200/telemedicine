@@ -40,9 +40,13 @@ function createApp() {
     app.set('trust proxy', 1);
   }
 
-  // HTTPS redirect in production (Azure sets x-forwarded-proto)
-  if (isProd) {
+  // HTTPS redirect in production (Azure/ALB sets x-forwarded-proto)
+  if (isProd && process.env.SKIP_HTTPS_REDIRECT !== 'true') {
     app.use((req, res, next) => {
+      // Skip redirect for health checks (ALB sends HTTP)
+      if (req.path.startsWith('/api/health')) {
+        return next();
+      }
       if (req.protocol !== 'https' && req.get('x-forwarded-proto') !== 'https') {
         return res.redirect(301, `https://${req.get('host')}${req.originalUrl}`);
       }
