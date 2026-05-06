@@ -3,6 +3,9 @@ const { prisma } = require('../models/db');
 const { isRecentlyOnline } = require('../services/presence.service');
 const { sendApiError } = require('./api-response');
 
+// Only set Secure cookie flag when HTTPS is available
+const useSecureCookies = process.env.NODE_ENV === 'production' && process.env.SKIP_HTTPS_REDIRECT !== 'true';
+
 function signToken(user) {
   const payload = { sub: user.id, role: user.role };
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -11,30 +14,27 @@ function signToken(user) {
 }
 
 function setAuthCookie(res, token) {
-  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('token', token, {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies,
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000
   });
 }
 
 function setSessionLocationCookie(res, location) {
-  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('sessionLocation', String(location || '').trim(), {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies,
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000
   });
 }
 
 function clearSessionLocationCookie(res) {
-  const isProd = process.env.NODE_ENV === 'production';
   res.clearCookie('sessionLocation', {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies,
     sameSite: 'lax'
   });
 }
