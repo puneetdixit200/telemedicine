@@ -57,8 +57,11 @@ function createApp() {
   app.use(requestContext);
   app.use(requestLogger);
 
+  const hasHttps = process.env.SKIP_HTTPS_REDIRECT !== 'true';
   app.use(
     helmet({
+      // Disable HSTS when not using HTTPS to prevent browsers from blocking HTTP
+      hsts: hasHttps,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
@@ -81,7 +84,9 @@ function createApp() {
             'https://cdn.gtranslate.net'
           ],
           frameSrc: ["'self'", 'https://translate.google.com', 'https://*.google.com', 'https://*.gtranslate.net'],
-          fontSrc: ["'self'", 'https:', 'data:']
+          fontSrc: ["'self'", 'https:', 'data:'],
+          // Only upgrade insecure requests when HTTPS is available
+          upgradeInsecureRequests: hasHttps ? [] : null
         }
       }
     })
